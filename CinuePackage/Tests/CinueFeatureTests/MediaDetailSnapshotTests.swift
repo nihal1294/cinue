@@ -482,6 +482,115 @@ struct MediaDetailSnapshotTests {
     }
 
     @Test
+    func watchEpisodeAgainSaturatesAtInt32Maximum() throws {
+        let controller = PersistenceController(inMemory: true)
+        let service = BackupService(persistence: controller, now: fixedDate)
+        let json = """
+        [
+          {
+            "tmdb_id": 68421,
+            "tvdb_id": 332331,
+            "title": "Overflow Boundary",
+            "seasons": [
+              {
+                "season": 1,
+                "episodes": [
+                  { "tmdb_id": 1401624, "episode": 2, "title": "Maximum Plays", "watched": true, "plays": 2147483647 }
+                ]
+              }
+            ]
+          }
+        ]
+        """
+
+        _ = try service.importSeriesGuideShows(data: Data(json.utf8))
+        try WatchStateStore(context: controller.container.viewContext, now: fixedDate)
+            .watchEpisodeAgain(localID: "seriesguide:episode:tmdb:1401624")
+
+        let episode = try #require(
+            MediaDetailSnapshotBuilder(context: controller.container.viewContext)
+                .episodeSnapshot(showLocalID: "seriesguide:show:tvdb:332331", season: 1, episode: 2)
+        )
+
+        #expect(episode.watchCount == Int(Int32.max))
+    }
+
+    @Test
+    func watchMovieAgainSaturatesAtInt32Maximum() throws {
+        let controller = PersistenceController(inMemory: true)
+        let service = BackupService(persistence: controller, now: fixedDate)
+        let json = """
+        [
+          {
+            "tmdb_id": 19913,
+            "title": "Overflow Boundary",
+            "watched": true,
+            "plays": 2147483647,
+            "in_watchlist": false
+          }
+        ]
+        """
+
+        _ = try service.importSeriesGuideMovies(data: Data(json.utf8))
+        try WatchStateStore(context: controller.container.viewContext, now: fixedDate)
+            .watchMovieAgain(localID: "seriesguide:movie:tmdb:19913")
+
+        let movie = try #require(
+            MediaDetailSnapshotBuilder(context: controller.container.viewContext)
+                .snapshot(localID: "seriesguide:movie:tmdb:19913", kind: .movie)
+        )
+
+        #expect(movie.item.watchCount == Int(Int32.max))
+    }
+
+    @Test
+    func showProgressSaturatesWhenValidEpisodeCountsExceedInt32MaximumInTotal() throws {
+        let controller = PersistenceController(inMemory: true)
+        let service = BackupService(persistence: controller, now: fixedDate)
+        let json = """
+        [
+          {
+            "tmdb_id": 68421,
+            "tvdb_id": 332331,
+            "title": "Overflow Boundary",
+            "seasons": [
+              {
+                "season": 1,
+                "episodes": [
+                  { "tmdb_id": 1401623, "episode": 1, "title": "First Maximum", "watched": true, "plays": 1 },
+                  { "tmdb_id": 1401624, "episode": 2, "title": "Second Maximum", "watched": true, "plays": 1 }
+                ]
+              }
+            ]
+          }
+        ]
+        """
+
+        _ = try service.importSeriesGuideShows(data: Data(json.utf8))
+        let context = controller.container.viewContext
+        for localID in [
+            "seriesguide:episode:tmdb:1401623",
+            "seriesguide:episode:tmdb:1401624"
+        ] {
+            let request = NSFetchRequest<NSManagedObject>(entityName: "EpisodeState")
+            request.predicate = NSPredicate(format: "localID == %@", localID)
+            let episode = try #require(context.fetch(request).first)
+            episode.setValue(Int32.max, forKey: "watchCount")
+        }
+        try context.save()
+
+        try WatchStateStore(context: context, now: fixedDate)
+            .markEpisodeWatched(localID: "seriesguide:episode:tmdb:1401623")
+
+        let show = try #require(
+            MediaDetailSnapshotBuilder(context: context)
+                .snapshot(localID: "seriesguide:show:tvdb:332331", kind: .show)
+        )
+
+        #expect(show.item.watchCount == Int(Int32.max))
+    }
+
+    @Test
     func userOwnedRatingAndNotesCanBeEditedForShowsMoviesAndEpisodes() throws {
         let controller = PersistenceController(inMemory: true)
         let service = BackupService(persistence: controller, now: fixedDate)

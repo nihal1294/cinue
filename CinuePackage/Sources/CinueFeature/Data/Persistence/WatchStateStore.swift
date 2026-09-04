@@ -32,7 +32,7 @@ struct WatchStateStore {
         let existingWatchCount = intValue(episode, forKey: "watchCount")
 
         episode.setValue(WatchStatus.watched.rawValue, forKey: "statusRaw")
-        episode.setValue(Int32(existingWatchCount + 1), forKey: "watchCount")
+        episode.setValue(Int32(clamping: existingWatchCount + 1), forKey: "watchCount")
         episode.setValue(timestamp, forKey: "watchedAt")
         episode.setValue(false, forKey: "isSkipped")
         episode.setValue(timestamp, forKey: "updatedAt")
@@ -194,7 +194,7 @@ struct WatchStateStore {
         let existingWatchCount = intValue(movie, forKey: "watchCount")
 
         movie.setValue(WatchStatus.watched.rawValue, forKey: "statusRaw")
-        movie.setValue(Int32(existingWatchCount + 1), forKey: "watchCount")
+        movie.setValue(Int32(clamping: existingWatchCount + 1), forKey: "watchCount")
         movie.setValue(timestamp, forKey: "watchedAt")
         movie.setValue(timestamp, forKey: "updatedAt")
 
@@ -323,7 +323,9 @@ struct WatchStateStore {
             stringValue(episode, forKey: "statusRaw") == WatchStatus.watched.rawValue
                 || intValue(episode, forKey: "watchCount") > 0
         }
-        let totalPlays = episodes.reduce(0) { $0 + intValue($1, forKey: "watchCount") }
+        let totalPlays = episodes.reduce(Int32(0)) { total, episode in
+            Int32(clamping: Int64(total) + Int64(intValue(episode, forKey: "watchCount")))
+        }
         let latestWatchedAt = watchedEpisodes
             .compactMap { $0.value(forKey: "watchedAt") as? Date }
             .max()
@@ -336,7 +338,7 @@ struct WatchStateStore {
             return
         }
 
-        show.setValue(Int32(totalPlays), forKey: "watchCount")
+        show.setValue(totalPlays, forKey: "watchCount")
         show.setValue(latestWatchedAt, forKey: "watchedAt")
         show.setValue(showStatus(totalEpisodes: episodes.count, watchedEpisodes: watchedEpisodes.count).rawValue, forKey: "statusRaw")
         show.setValue(timestamp, forKey: "updatedAt")
