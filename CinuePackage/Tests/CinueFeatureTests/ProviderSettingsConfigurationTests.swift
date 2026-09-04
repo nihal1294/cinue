@@ -3,7 +3,7 @@ import Testing
 
 struct ProviderSettingsConfigurationTests {
     @Test
-    func tmdbIsTheOnlyActiveMetadataProviderForPersonalBuild() {
+    func tmdbIsTheOnlyActiveMetadataProvider() {
         #expect(ProviderSettingsConfiguration.activeProviders == [.tmdb])
         #expect(ProviderSettingsConfiguration.showsTheTVDBSetup == false)
     }

@@ -6,7 +6,7 @@ struct DiagnosticsView: View {
     var body: some View {
         Form {
             Section("Build") {
-                LabeledContent("Mode", value: "Personal Local")
+                LabeledContent("Mode", value: "Local Only")
                 LabeledContent("Persistence", value: persistenceLabel)
                 LabeledContent("CloudKit", value: environment.persistence.mode.isCloudKitEnabled ? "Active" : "Off")
             }

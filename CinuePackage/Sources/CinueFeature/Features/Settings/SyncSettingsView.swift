@@ -6,7 +6,7 @@ struct SyncSettingsView: View {
             Section("Current Mode") {
                 CinueSettingsRow(title: "Manual Backup", symbol: "externaldrive.fill", tone: .cloud)
 
-                Text("This personal build stores your data locally on this device. Use Import and Export to save backups into Files, iCloud Drive, AirDrop, or external storage.")
+                Text("Cinue stores your data locally on this device. Use Import and Export to save backups into Files, iCloud Drive, AirDrop, or external storage.")
                     .foregroundStyle(.secondary)
             }
 

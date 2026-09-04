@@ -20,7 +20,7 @@ struct AboutCinueView: View {
             }
 
             Section("Distribution") {
-                Text("This build targets personal local installation. Public App Store distribution can be revisited after the app is feature-complete and provider/API compliance is ready.")
+                Text("Cinue is distributed as source for local installation. It is not currently available on the App Store.")
                     .foregroundStyle(.secondary)
             }
         }

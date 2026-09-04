@@ -9,9 +9,9 @@ Cinue supports importing JSON backups produced by SeriesGuide. Compatibility beh
 
 Cinue is an independent implementation and is not affiliated with or endorsed by SeriesGuide or its maintainers.
 
-## XcodeBuildMCP scaffold
+## XcodeBuildMCP
 
-The original Xcode workspace/package shell was generated with XcodeBuildMCP. Cinue's product code, user experience, persistence, import/export, tests, and public documentation were subsequently developed for this project.
+Cinue includes Xcode project and Swift package configuration generated with XcodeBuildMCP.
 
 - Source: https://github.com/getsentry/XcodeBuildMCP
 - License: MIT
