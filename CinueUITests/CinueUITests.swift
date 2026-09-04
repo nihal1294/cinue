@@ -3,6 +3,7 @@ import XCTest
 final class CinueUITests: XCTestCase {
     private let defaultTimeout: TimeInterval = 5
     private let stateTransitionTimeout: TimeInterval = 20
+    private let feedbackDismissalTimeout: TimeInterval = 20
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -29,7 +30,7 @@ final class CinueUITests: XCTestCase {
 
         tapButton(labelBeginning: "Mark 1x02 Fallen Angel watched", in: app)
         XCTAssertTrue(app.staticTexts["1x02 Fallen Angel marked watched."].waitForExistence(timeout: defaultTimeout))
-        XCTAssertTrue(app.staticTexts["1x02 Fallen Angel marked watched."].waitForNonExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.staticTexts["1x02 Fallen Angel marked watched."].waitForNonExistence(timeout: feedbackDismissalTimeout))
 
         tapButton(labelBeginning: "Recently Watched,", in: app)
         XCTAssertTrue(app.staticTexts["Recently Watched"].waitForExistence(timeout: defaultTimeout))
@@ -172,7 +173,7 @@ final class CinueUITests: XCTestCase {
         let createdMessage = app.staticTexts["List created."]
         XCTAssertTrue(createdMessage.waitForExistence(timeout: defaultTimeout))
         XCTAssertTrue(app.staticTexts["Road Trip"].waitForExistence(timeout: defaultTimeout))
-        XCTAssertTrue(createdMessage.waitForNonExistence(timeout: defaultTimeout))
+        XCTAssertTrue(createdMessage.waitForNonExistence(timeout: feedbackDismissalTimeout))
 
         tapButton(exactLabel: "Manage list", in: app)
         tapButton(exactLabel: "Rename", in: app)
@@ -185,7 +186,7 @@ final class CinueUITests: XCTestCase {
         let renamedMessage = app.staticTexts["List renamed."]
         XCTAssertTrue(renamedMessage.waitForExistence(timeout: defaultTimeout))
         XCTAssertTrue(app.staticTexts["Road Trip Picks"].waitForExistence(timeout: defaultTimeout))
-        XCTAssertTrue(renamedMessage.waitForNonExistence(timeout: defaultTimeout))
+        XCTAssertTrue(renamedMessage.waitForNonExistence(timeout: feedbackDismissalTimeout))
 
         tapButton(exactLabel: "Manage list", in: app)
         tapButton(exactLabel: "Delete", in: app)

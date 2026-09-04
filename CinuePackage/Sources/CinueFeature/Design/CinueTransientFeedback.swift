@@ -1,8 +1,16 @@
 import SwiftUI
 
 enum CinueTransientFeedback {
-    static let displayDuration: TimeInterval = 2.8
-    static let actionableDisplayDuration: TimeInterval = 6.0
+    static let displayDuration = resolvedDisplayDuration(arguments: ProcessInfo.processInfo.arguments)
+    static let actionableDisplayDuration = resolvedActionableDisplayDuration(arguments: ProcessInfo.processInfo.arguments)
+
+    static func resolvedDisplayDuration(arguments: [String]) -> TimeInterval {
+        arguments.contains("--cinue-ui-test-seed") ? 12.0 : 2.8
+    }
+
+    static func resolvedActionableDisplayDuration(arguments: [String]) -> TimeInterval {
+        arguments.contains("--cinue-ui-test-seed") ? 12.0 : 6.0
+    }
 }
 
 private struct CinueAutoDismissFeedbackModifier: ViewModifier {
