@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23000" systemVersion="26.0" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="MetadataRecord" representedClassName="MetadataRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="attributionText" optional="YES" attributeType="String"/>
+        <attribute name="backdropURLString" optional="YES" attributeType="String"/>
+        <attribute name="cacheID" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="expiresAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="fetchedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="kindRaw" optional="NO" attributeType="String"/>
+        <attribute name="overview" optional="YES" attributeType="String"/>
+        <attribute name="posterURLString" optional="YES" attributeType="String"/>
+        <attribute name="providerContentID" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="providerRaw" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="rawJSON" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
+        <attribute name="releaseDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="sourceURLString" optional="YES" attributeType="String"/>
+        <attribute name="title" optional="NO" attributeType="String"/>
+    </entity>
+    <entity name="EpisodeState" representedClassName="EpisodeState" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="episodeNumber" optional="YES" attributeType="Integer 32" usesScalarValueType="NO"/>
+        <attribute name="isCollected" optional="NO" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isSkipped" optional="NO" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="localID" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="userRating" optional="YES" attributeType="Integer 16" usesScalarValueType="NO"/>
+        <attribute name="seasonNumber" optional="NO" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="showLocalID" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="statusRaw" optional="NO" attributeType="String" defaultValueString="unwatched"/>
+        <attribute name="title" optional="YES" attributeType="String"/>
+        <attribute name="tmdbID" optional="YES" attributeType="Integer 64" indexed="YES" usesScalarValueType="NO"/>
+        <attribute name="tvdbID" optional="YES" attributeType="Integer 64" indexed="YES" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="watchCount" optional="NO" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="watchedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="ProviderSetting" representedClassName="ProviderSetting" syncable="YES" codeGenerationType="class">
+        <attribute name="isEnabled" optional="NO" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="lastErrorMessage" optional="YES" attributeType="String"/>
+        <attribute name="lastValidatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="providerRaw" optional="NO" attributeType="String" indexed="YES"/>
+    </entity>
+    <entity name="TrackedItem" representedClassName="TrackedItem" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="imdbID" optional="YES" attributeType="String" indexed="YES"/>
+        <attribute name="isCollected" optional="NO" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isFavorite" optional="NO" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isHidden" optional="NO" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="kindRaw" optional="NO" attributeType="String"/>
+        <attribute name="localID" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="sortTitle" optional="YES" attributeType="String"/>
+        <attribute name="statusRaw" optional="NO" attributeType="String" defaultValueString="unwatched"/>
+        <attribute name="title" optional="NO" attributeType="String"/>
+        <attribute name="tmdbID" optional="YES" attributeType="Integer 64" indexed="YES" usesScalarValueType="NO"/>
+        <attribute name="tvdbID" optional="YES" attributeType="Integer 64" indexed="YES" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="userRating" optional="YES" attributeType="Integer 16" usesScalarValueType="NO"/>
+        <attribute name="watchCount" optional="NO" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="watchedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="UserList" representedClassName="UserList" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="localID" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="name" optional="NO" attributeType="String"/>
+        <attribute name="sortOrder" optional="NO" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="UserListItem" representedClassName="UserListItem" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="externalID" optional="YES" attributeType="String"/>
+        <attribute name="itemLocalID" optional="YES" attributeType="String" indexed="YES"/>
+        <attribute name="kindRaw" optional="NO" attributeType="String" defaultValueString="show"/>
+        <attribute name="listLocalID" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="localID" optional="NO" attributeType="String" indexed="YES"/>
+        <attribute name="sortOrder" optional="NO" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="tmdbID" optional="YES" attributeType="Integer 64" indexed="YES" usesScalarValueType="NO"/>
+        <attribute name="tvdbID" optional="YES" attributeType="Integer 64" indexed="YES" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <elements>
+        <element name="TrackedItem" positionX="-63" positionY="-18" width="128" height="268"/>
+        <element name="MetadataRecord" positionX="108" positionY="-18" width="128" height="223"/>
+        <element name="EpisodeState" positionX="450" positionY="-18" width="128" height="253"/>
+        <element name="ProviderSetting" positionX="279" positionY="-18" width="128" height="103"/>
+        <element name="UserList" positionX="621" positionY="-18" width="128" height="103"/>
+        <element name="UserListItem" positionX="792" positionY="-18" width="128" height="178"/>
+    </elements>
+</model>

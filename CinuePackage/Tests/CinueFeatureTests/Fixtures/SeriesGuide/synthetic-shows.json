@@ -1,0 +1,38 @@
+[
+  {
+    "tmdb_id": 990000001,
+    "tvdb_id": 990000101,
+    "title": "Signal Harbor",
+    "status": "Continuing",
+    "runtime": 42,
+    "favorite": true,
+    "hidden": false,
+    "seasons": [
+      {
+        "season": 1,
+        "episodes": [
+          {"tmdb_id": 990001001, "episode": 1, "title": "First Light", "watched": true, "plays": 1},
+          {"tmdb_id": 990001002, "episode": 2, "title": "Turning Tide", "first_aired": 1600000000000, "watched": false, "plays": 0}
+        ]
+      }
+    ]
+  },
+  {
+    "tmdb_id": 990000002,
+    "tvdb_id": 990000102,
+    "title": "Paper Moons",
+    "status": "Ended",
+    "runtime": 30,
+    "favorite": false,
+    "hidden": false,
+    "seasons": [
+      {
+        "season": 1,
+        "episodes": [
+          {"tmdb_id": 990002001, "episode": 1, "title": "Fold", "watched": true, "plays": 1},
+          {"tmdb_id": 990002002, "episode": 2, "title": "Unfold", "watched": true, "plays": 1}
+        ]
+      }
+    ]
+  }
+]

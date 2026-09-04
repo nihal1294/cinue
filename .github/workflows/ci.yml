@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-checks:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Check repository
+        shell: bash
+        run: |
+          git diff --check HEAD^ HEAD
+
+          while IFS= read -r -d '' file
+          do
+            bytes=$(wc -c < "$file")
+            if (( bytes > 52428800 ))
+            then
+              echo "Tracked file exceeds 50 MiB: $file" >&2
+              exit 1
+            fi
+          done < <(git ls-files -z)
+
+  build-and-unit-tests:
+    name: Build and unit tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DESTINATION: platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Show toolchain and simulator inventory
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+
+      - name: Build
+        run: >-
+          xcodebuild build
+          -workspace Cinue.xcworkspace
+          -scheme Cinue
+          -destination "$DESTINATION"
+          -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Unit tests
+        run: >-
+          xcodebuild test
+          -workspace Cinue.xcworkspace
+          -scheme Cinue
+          -testPlan Cinue
+          -destination "$DESTINATION"
+          -only-testing:CinueFeatureTests
+          -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          -resultBundlePath "${{ runner.temp }}/UnitTests.xcresult"
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Analyze
+        run: >-
+          xcodebuild analyze
+          -workspace Cinue.xcworkspace
+          -scheme Cinue
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload failed unit-test result
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unit-test-results
+          path: ${{ runner.temp }}/UnitTests.xcresult
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+
+  ui-tests:
+    name: UI tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DESTINATION: platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Show toolchain and simulator inventory
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+
+      - name: UI tests
+        run: >-
+          xcodebuild test
+          -workspace Cinue.xcworkspace
+          -scheme Cinue
+          -testPlan Cinue
+          -destination "$DESTINATION"
+          -only-testing:CinueUITests
+          -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          -resultBundlePath "${{ runner.temp }}/UITests.xcresult"
+
+      - name: Upload failed UI-test result
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-test-results
+          path: ${{ runner.temp }}/UITests.xcresult
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
