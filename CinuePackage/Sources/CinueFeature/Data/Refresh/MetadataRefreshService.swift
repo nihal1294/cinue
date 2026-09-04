@@ -16,24 +16,34 @@ final class MetadataRefreshService {
     private let now: @Sendable () -> Date
     private let staleInterval: TimeInterval
     private let maxItemsPerRun: Int
+    private let metadataCleanupContext: NSManagedObjectContext
 
     init(
         persistence: PersistenceController,
         tmdbClient: TMDBClient,
         now: @escaping @Sendable () -> Date = Date.init,
         staleInterval: TimeInterval = 60 * 60 * 24,
-        maxItemsPerRun: Int = 20
+        maxItemsPerRun: Int = 20,
+        metadataCleanupContext: NSManagedObjectContext? = nil
     ) {
         self.persistence = persistence
         self.tmdbClient = tmdbClient
         self.now = now
         self.staleInterval = staleInterval
         self.maxItemsPerRun = maxItemsPerRun
+        self.metadataCleanupContext = metadataCleanupContext ?? persistence.container.newBackgroundContext()
     }
 
     func refreshStaleMetadata(force: Bool = false) async -> MetadataRefreshSummary {
         let context = persistence.container.viewContext
         var summary = MetadataRefreshSummary()
+        do {
+            try await purgeExpiredTMDBMetadata()
+        } catch {
+            summary.failedItems = 1
+            return summary
+        }
+
         if force == false {
             summary.skippedFreshItems = freshTrackedItemCount(in: context)
         }
@@ -128,6 +138,29 @@ final class MetadataRefreshService {
 
             return isFreshProviderMetadata(metadata)
         }.count
+    }
+
+    private func purgeExpiredTMDBMetadata() async throws {
+        let expirationDate = now()
+        try await metadataCleanupContext.perform {
+            do {
+                let request = NSFetchRequest<NSManagedObject>(entityName: "MetadataRecord")
+                request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+                    NSPredicate(format: "providerRaw == %@", MetadataProviderID.tmdb.rawValue),
+                    NSPredicate(format: "expiresAt != nil AND expiresAt <= %@", expirationDate as NSDate)
+                ])
+
+                let expiredRecords = try self.metadataCleanupContext.fetch(request)
+                expiredRecords.forEach(self.metadataCleanupContext.delete)
+
+                if expiredRecords.isEmpty == false {
+                    try self.metadataCleanupContext.save()
+                }
+            } catch {
+                self.metadataCleanupContext.rollback()
+                throw error
+            }
+        }
     }
 
     private func trackedItem(localID: String, kind: MediaKind, in context: NSManagedObjectContext) -> NSManagedObject? {
@@ -293,7 +326,10 @@ final class MetadataRefreshService {
         ]
 
         if let tmdbID = episode.tmdbID {
-            predicates.append(NSPredicate(format: "tmdbID == %@", NSNumber(value: tmdbID)))
+            predicates.append(NSCompoundPredicate(andPredicateWithSubpredicates: [
+                NSPredicate(format: "showLocalID == %@", showLocalID),
+                NSPredicate(format: "tmdbID == %@", NSNumber(value: tmdbID))
+            ]))
         }
 
         let request = NSFetchRequest<NSManagedObject>(entityName: "EpisodeState")
@@ -310,7 +346,10 @@ final class MetadataRefreshService {
             episode.stringValue(forKey: "statusRaw") == WatchStatus.watched.rawValue
                 || episode.intValue(forKey: "watchCount") > 0
         }
-        let totalPlays = episodes.reduce(0) { $0 + $1.intValue(forKey: "watchCount") }
+        let maximumPlayCount = Int64(Int32.max)
+        let totalPlays = episodes.reduce(Int64(0)) { total, episode in
+            min(maximumPlayCount, total + Int64(max(0, episode.intValue(forKey: "watchCount"))))
+        }
 
         let showRequest = NSFetchRequest<NSManagedObject>(entityName: "TrackedItem")
         showRequest.fetchLimit = 1
@@ -391,7 +430,7 @@ final class MetadataRefreshService {
 
     private func episodeLocalID(for episode: RefreshedEpisodeDetails, showLocalID: String) -> String {
         if let tmdbID = episode.tmdbID {
-            return "provider:episode:tmdb:\(tmdbID)"
+            return "provider:episode:\(showLocalID):tmdb:\(tmdbID)"
         }
 
         return "provider:episode:\(showLocalID):s\(episode.seasonNumber)e\(episode.episodeNumber)"
