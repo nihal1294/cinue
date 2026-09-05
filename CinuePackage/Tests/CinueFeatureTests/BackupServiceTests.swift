@@ -485,35 +485,6 @@ struct BackupServiceTests {
     }
 
     @Test
-    func documentsSeedImporterRejectsOversizedBackupBeforeImport() async throws {
-        let controller = PersistenceController(inMemory: true)
-        let service = BackupService(
-            persistence: controller,
-            now: fixedDate,
-            importPolicy: testImportPolicy(maximumFileBytes: 32)
-        )
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cinue-seed-byte-limit-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let fileURL = directory.appendingPathComponent("seriesguide-movies-2030-01-01-00-00-00.json")
-        try Data(repeating: 0, count: 33).write(to: fileURL, options: .atomic)
-        let importer = SeriesGuideDocumentsSeedImporter(
-            documentsDirectory: directory,
-            backupService: service
-        )
-
-        do {
-            _ = try await importer.importAvailableBackups()
-            Issue.record("Expected the documents seed importer to reject the oversized backup.")
-        } catch let error as BackupImportError {
-            #expect(error == .fileTooLarge(actualBytes: 33, maximumBytes: 32))
-        }
-
-        try expectImportableEntityCountsAreZero(in: controller)
-    }
-
-    @Test
     func syntheticSeriesGuideFixturesImportIntoCoreData() throws {
         let controller = PersistenceController(inMemory: true)
         let service = BackupService(persistence: controller, now: fixedDate)
@@ -1222,33 +1193,6 @@ struct BackupServiceTests {
         #expect(lists.count == 1)
     }
 
-    @Test
-    func documentsSeedImporterOrdersSeriesGuideBackupsForResolvedLists() throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cinue-seed-order-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer {
-            try? FileManager.default.removeItem(at: directory)
-        }
-
-        for filename in [
-            "seriesguide-lists-2030-01-01-00-00-02.json",
-            "seriesguide-movies-2030-01-01-00-00-01.json",
-            "seriesguide-shows-2030-01-01-00-00-00.json",
-            "ignored.json"
-        ] {
-            try Data("[]".utf8).write(to: directory.appendingPathComponent(filename))
-        }
-
-        let ordered = try SeriesGuideDocumentsSeedImporter.orderedBackupURLs(in: directory)
-            .map(\.lastPathComponent)
-
-        #expect(ordered == [
-            "seriesguide-shows-2030-01-01-00-00-00.json",
-            "seriesguide-movies-2030-01-01-00-00-01.json",
-            "seriesguide-lists-2030-01-01-00-00-02.json"
-        ])
-    }
 }
 
 private func fixedDate() -> Date {

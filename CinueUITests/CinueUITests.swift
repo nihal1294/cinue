@@ -28,8 +28,7 @@ final class CinueUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Altered Carbon"].waitForExistence(timeout: defaultTimeout))
 
         tapButton(labelBeginning: "Mark 1x02 Fallen Angel watched", in: app)
-        XCTAssertTrue(app.staticTexts["1x02 Fallen Angel marked watched."].waitForExistence(timeout: defaultTimeout))
-        XCTAssertTrue(app.staticTexts["1x02 Fallen Angel marked watched."].waitForNonExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Mark 1x03 Fresh Upload watched")).firstMatch.waitForExistence(timeout: stateTransitionTimeout))
 
         tapButton(labelBeginning: "Recently Watched,", in: app)
         XCTAssertTrue(app.staticTexts["Recently Watched"].waitForExistence(timeout: defaultTimeout))
@@ -74,17 +73,19 @@ final class CinueUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Altered Carbon"].waitForExistence(timeout: defaultTimeout))
 
         tapButton(labelBeginning: "Add to Favorites", in: app, timeout: stateTransitionTimeout)
-        XCTAssertTrue(app.staticTexts["Added to Favorites."].waitForExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Remove from Favorites")).firstMatch.waitForExistence(timeout: stateTransitionTimeout))
 
         tapButton(labelBeginning: "Hide from Library", in: app)
-        XCTAssertTrue(app.staticTexts["Hidden from Library."].waitForExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Show in Library")).firstMatch.waitForExistence(timeout: stateTransitionTimeout))
 
         tapTab("Library", in: app)
         tapButton(labelBeginning: "Hidden,", in: app)
         XCTAssertTrue(app.staticTexts["Altered Carbon"].waitForExistence(timeout: defaultTimeout))
         tapButton(exactLabel: "More actions", in: app)
         tapButton(exactLabel: "Show in Library", in: app)
-        XCTAssertTrue(app.staticTexts["Shown in Library."].waitForExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.staticTexts["Altered Carbon"].waitForNonExistence(timeout: stateTransitionTimeout))
+        tapButton(labelBeginning: "Shows,", in: app)
+        XCTAssertTrue(app.staticTexts["Altered Carbon"].waitForExistence(timeout: stateTransitionTimeout))
     }
 
     @MainActor
@@ -97,8 +98,6 @@ final class CinueUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["1x02 Fallen Angel"].waitForExistence(timeout: defaultTimeout))
 
         tapButton(exactLabel: "Mark Watched", in: app)
-        XCTAssertTrue(app.staticTexts["1x02 Fallen Angel marked watched."].waitForExistence(timeout: defaultTimeout))
-
         tapButton(exactLabel: "View Next Episode", in: app)
         XCTAssertTrue(app.staticTexts["1x03 Fresh Upload"].waitForExistence(timeout: defaultTimeout))
     }
@@ -119,11 +118,11 @@ final class CinueUITests: XCTestCase {
         app.staticTexts["Fight Club"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Add"].waitForExistence(timeout: defaultTimeout))
         tapButton(exactLabel: "Add to Watchlist", in: app)
-        XCTAssertTrue(app.staticTexts["Added to Watchlist."].waitForExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.buttons["On Watchlist"].waitForExistence(timeout: stateTransitionTimeout))
         tapButton(exactLabel: "Done", in: app)
 
         tapButton(exactLabel: "Add to Library", in: app)
-        XCTAssertTrue(app.staticTexts["Added to Library."].waitForExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.buttons["Add to Library"].waitForNonExistence(timeout: stateTransitionTimeout))
 
         tapButton(exactLabel: "Clear search", in: app)
         XCTAssertTrue(app.staticTexts["Search by title to add it to your library or watchlist."].waitForExistence(timeout: defaultTimeout))
@@ -161,7 +160,8 @@ final class CinueUITests: XCTestCase {
 
         tapButton(exactLabel: "More actions", in: app)
         tapButton(exactLabel: "Remove from List", in: app)
-        XCTAssertTrue(app.staticTexts["Altered Carbon removed from list."].waitForExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.staticTexts["Altered Carbon"].waitForNonExistence(timeout: stateTransitionTimeout))
+        XCTAssertTrue(app.staticTexts["Weekend"].exists)
 
         tapButton(exactLabel: "Create list", in: app)
         let newListAlert = app.alerts["New List"]
@@ -169,10 +169,7 @@ final class CinueUITests: XCTestCase {
         newListAlert.textFields["List name"].tap()
         newListAlert.textFields["List name"].typeText("Road Trip")
         newListAlert.buttons["Create"].tap()
-        let createdMessage = app.staticTexts["List created."]
-        XCTAssertTrue(createdMessage.waitForExistence(timeout: defaultTimeout))
-        XCTAssertTrue(app.staticTexts["Road Trip"].waitForExistence(timeout: defaultTimeout))
-        XCTAssertTrue(createdMessage.waitForNonExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.staticTexts["Road Trip"].waitForExistence(timeout: stateTransitionTimeout))
 
         tapButton(exactLabel: "Manage list", in: app)
         tapButton(exactLabel: "Rename", in: app)
@@ -182,17 +179,18 @@ final class CinueUITests: XCTestCase {
         renameField.tap()
         renameField.typeText(" Picks")
         renameAlert.buttons["Rename"].tap()
-        let renamedMessage = app.staticTexts["List renamed."]
-        XCTAssertTrue(renamedMessage.waitForExistence(timeout: defaultTimeout))
-        XCTAssertTrue(app.staticTexts["Road Trip Picks"].waitForExistence(timeout: defaultTimeout))
-        XCTAssertTrue(renamedMessage.waitForNonExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.staticTexts["Road Trip Picks"].waitForExistence(timeout: stateTransitionTimeout))
+        XCTAssertFalse(app.staticTexts["Road Trip"].exists)
 
         tapButton(exactLabel: "Manage list", in: app)
         tapButton(exactLabel: "Delete", in: app)
         let deleteAlert = app.alerts["Delete List?"]
         XCTAssertTrue(deleteAlert.waitForExistence(timeout: defaultTimeout))
         deleteAlert.buttons["Delete"].tap()
-        XCTAssertTrue(app.staticTexts["List deleted. Library items were kept."].waitForExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.staticTexts["Road Trip Picks"].waitForNonExistence(timeout: stateTransitionTimeout))
+        XCTAssertTrue(app.staticTexts["Weekend"].exists)
+        tapTab("Library", in: app)
+        XCTAssertTrue(app.staticTexts["Altered Carbon"].waitForExistence(timeout: stateTransitionTimeout))
     }
 
     @MainActor
@@ -234,19 +232,12 @@ final class CinueUITests: XCTestCase {
         tmdbField.typeText("ui-test-token")
 
         tapButton(exactLabel: "Save Credential", in: app)
-        XCTAssertTrue(
-            app.staticTexts["TMDB credential saved."].waitForExistence(timeout: defaultTimeout)
-                || app.staticTexts["Configured"].waitForExistence(timeout: defaultTimeout)
-        )
-        XCTAssertTrue(app.staticTexts["Configured"].waitForExistence(timeout: defaultTimeout))
+        XCTAssertTrue(app.staticTexts["Configured"].waitForExistence(timeout: stateTransitionTimeout))
 
         let tmdbRemoveButton = app.buttons["Remove"].firstMatch
         XCTAssertTrue(tmdbRemoveButton.waitForExistence(timeout: defaultTimeout))
         tmdbRemoveButton.tap()
-        XCTAssertTrue(
-            app.staticTexts["TMDB credential removed."].waitForExistence(timeout: defaultTimeout)
-                || app.staticTexts["Not Configured"].waitForExistence(timeout: defaultTimeout)
-        )
+        XCTAssertTrue(app.staticTexts["Not Configured"].waitForExistence(timeout: stateTransitionTimeout))
 
         tapTab("Settings", in: app)
         XCTAssertTrue(app.buttons["Insights"].waitForExistence(timeout: defaultTimeout))
@@ -384,13 +375,5 @@ final class CinueUITests: XCTestCase {
     private func screenTitle(_ title: String, existsIn app: XCUIApplication) -> Bool {
         app.navigationBars[title].waitForExistence(timeout: defaultTimeout)
             || app.staticTexts[title].waitForExistence(timeout: 1)
-    }
-}
-
-private extension XCUIElement {
-    func tapIfExists(timeout: TimeInterval = 1) {
-        if waitForExistence(timeout: timeout) {
-            tap()
-        }
     }
 }

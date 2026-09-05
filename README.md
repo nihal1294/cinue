@@ -48,7 +48,7 @@ Choose your own signing team for a local build. Forks may override `PRODUCT_BUND
 
 ### 3. Add a TMDB credential
 
-In Cinue, open **Settings** > **Provider Keys** and enter your own TMDB v3 API key or v4 read access token. The credential is stored in a ThisDeviceOnly Keychain item on the device and is excluded from Cinue backups. It authorizes TMDB discovery and metadata API requests. Remote artwork is fetched separately from the approved `image.tmdb.org` image service when a library item has an approved artwork URL, including an imported or retained URL, and may load without a saved credential. Your watch history, lists, ratings, notes, and backups remain local.
+In Cinue, open **Settings** > **Provider Keys** and enter your own TMDB v3 API key or v4 read access token to enable discovery and metadata refresh. See [Privacy](#privacy) for credential storage and artwork requests.
 
 ## Importing from SeriesGuide
 
@@ -61,8 +61,6 @@ Importing changes the local library. Export a Cinue backup before migrating or r
 Cinue stores watch history, lists, preferences, and imported data locally with Core Data. There is no account, analytics, telemetry, or backend. A saved TMDB credential authorizes discovery and metadata API requests. Remote artwork is fetched separately from the approved `image.tmdb.org` image service when a library item has an approved artwork URL, including an imported or retained URL, and may load without a saved credential. Credentials are user supplied, stored in the device Keychain, and excluded from backups. Your watch history, lists, ratings, notes, and backups remain local.
 
 Automatic iCloud sync is not active. Use the manual JSON export and import flow to move data between devices or keep a copy outside the app.
-
-The repository excludes local data, developer credentials, and real viewing exports.
 
 ## User Guide
 
