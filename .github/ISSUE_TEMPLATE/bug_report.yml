@@ -49,13 +49,6 @@ body:
       description: What did you expect Cinue to do?
     validations:
       required: true
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual result
-      description: What did Cinue do instead?
-    validations:
-      required: true
   - type: checkboxes
     id: privacy
     attributes:

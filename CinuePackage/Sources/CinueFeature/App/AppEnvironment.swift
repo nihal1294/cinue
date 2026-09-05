@@ -13,8 +13,6 @@ public final class AppEnvironment {
     let metadataRefreshService: MetadataRefreshService
     let notificationService: CinueNotificationService
     private var isRefreshingMetadata = false
-    private let shouldSeedSeriesGuideBackups: Bool
-    private var didAttemptSeriesGuideBackupSeed = false
 
     init(
         router: AppRouter,
@@ -24,8 +22,7 @@ public final class AppEnvironment {
         artworkPipeline: any ArtworkImageLoading,
         backupService: BackupService,
         metadataRefreshService: MetadataRefreshService,
-        notificationService: CinueNotificationService,
-        shouldSeedSeriesGuideBackups: Bool = false
+        notificationService: CinueNotificationService
     ) {
         self.router = router
         self.persistence = persistence
@@ -35,7 +32,6 @@ public final class AppEnvironment {
         self.backupService = backupService
         self.metadataRefreshService = metadataRefreshService
         self.notificationService = notificationService
-        self.shouldSeedSeriesGuideBackups = shouldSeedSeriesGuideBackups
     }
 
     public static func live() -> AppEnvironment {
@@ -58,8 +54,7 @@ public final class AppEnvironment {
             notificationService: CinueNotificationService(
                 persistence: persistence,
                 scheduler: UserNotificationScheduler()
-            ),
-            shouldSeedSeriesGuideBackups: ProcessInfo.processInfo.arguments.contains(Self.seriesGuideBackupSeedArgument)
+            )
         )
     }
 
@@ -80,7 +75,6 @@ public final class AppEnvironment {
     }
 
     public func prepareForAppOpen() async {
-        await seedSeriesGuideBackupsIfRequested()
         await refreshMetadataOnAppOpen()
         await refreshNotificationsOnAppOpen()
     }
@@ -100,37 +94,6 @@ public final class AppEnvironment {
     }
 
     private static let uiTestSeedArgument = "--cinue-ui-test-seed"
-    private static let seriesGuideBackupSeedArgument = "--cinue-seed-seriesguide-backups"
-
-    private func seedSeriesGuideBackupsIfRequested() async {
-        guard shouldSeedSeriesGuideBackups, didAttemptSeriesGuideBackupSeed == false else {
-            return
-        }
-
-        didAttemptSeriesGuideBackupSeed = true
-
-        do {
-            let documentsDirectory = try FileManager.default.url(
-                for: .documentDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            )
-            let importer = SeriesGuideDocumentsSeedImporter(
-                documentsDirectory: documentsDirectory,
-                backupService: backupService
-            )
-            let summaries = try await importer.importAvailableBackups()
-            if summaries.isEmpty == false {
-                let summaryText = summaries
-                    .map { "\($0.source): \($0.importedItems) imported, \($0.updatedItems) updated, \($0.skippedItems) skipped" }
-                    .joined(separator: "; ")
-                print("Imported SeriesGuide simulator backups. \(summaryText)")
-            }
-        } catch {
-            print("Failed to import SeriesGuide simulator backups: \(error)")
-        }
-    }
 
     private static func uiTestSeeded() -> AppEnvironment {
         let keychain = KeychainStore(service: "com.nihal.Cinue.providers.uiTests")

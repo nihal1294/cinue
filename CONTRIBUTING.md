@@ -12,10 +12,6 @@ xcodebuild test -workspace Cinue.xcworkspace -scheme Cinue -testPlan Cinue \
   -only-testing:CinueFeatureTests \
   CODE_SIGNING_ALLOWED=NO
 
-xcodebuild build -workspace Cinue.xcworkspace -scheme Cinue \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
-  CODE_SIGNING_ALLOWED=NO
-
 git diff --check
 git status --short
 ```
@@ -30,4 +26,4 @@ Do not submit credentials, real viewing exports, or third-party copyrighted medi
 
 ## Pull requests and commits
 
-Describe the user-facing change, its tests, and any compatibility impact. Use a conventional commit-style squash title, such as `feat: add list sorting` or `fix: preserve backup preferences`.
+Describe the user-facing change, its tests, and any compatibility impact.

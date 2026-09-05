@@ -21,12 +21,3 @@ body:
     attributes:
       label: Alternatives considered
       description: What other approaches or workarounds have you considered?
-    validations:
-      required: true
-  - type: textarea
-    id: scope-impact
-    attributes:
-      label: Scope and impact
-      description: Note affected workflows, platforms, or potential trade-offs.
-    validations:
-      required: true
