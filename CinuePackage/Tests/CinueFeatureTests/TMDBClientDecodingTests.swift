@@ -277,6 +277,128 @@ struct TMDBClientDecodingTests {
     }
 
     @Test
+    func searchRejectsResponseLargerThanMetadataLimitBeforeDecoding() async throws {
+        let oversizedOverview = String(repeating: "x", count: 1_048_576)
+        let response = Data(
+            #"{"page":1,"results":[{"id":550,"media_type":"movie","title":"Fight Club","overview":"\#(oversizedOverview)"}]}"#.utf8
+        )
+        let client = TMDBClient(
+            apiKey: { "1234567890abcdef1234567890abcdef" },
+            transport: { request in
+                (
+                    response,
+                    HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                )
+            }
+        )
+
+        await #expect(throws: MetadataProviderError.invalidResponse) {
+            _ = try await client.search(query: "fight club")
+        }
+    }
+
+    @Test
+    func searchCapsDecodedResultsAtMetadataLimit() async throws {
+        let results = (1...101).map { index in
+            #"{"id":\#(index),"media_type":"movie","title":"Movie \#(index)"}"#
+        }.joined(separator: ",")
+        let response = Data(#"{"page":1,"results":[\#(results)]}"#.utf8)
+        let client = TMDBClient(
+            apiKey: { "1234567890abcdef1234567890abcdef" },
+            transport: { request in
+                (
+                    response,
+                    HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                )
+            }
+        )
+
+        let summaries = try await client.search(query: "movies")
+
+        #expect(summaries.count == 100)
+        #expect(summaries.last?.contentIDs.tmdbID == 100)
+    }
+
+    @Test
+    func responseCollectorRejectsDeclaredOversizeBeforeReadingTheBody() async throws {
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.themoviedb.org/3/search/multi")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Content-Length": "4"]
+        )!
+        let cancellation = CancellationRecorder()
+        let bytes = AsyncStream<UInt8>(bufferingPolicy: .unbounded) { continuation in
+            continuation.yield(1)
+            continuation.finish()
+        }
+
+        await #expect(throws: TMDBResponseBodyCollectionError.responseTooLarge) {
+            _ = try await TMDBResponseBodyCollector.collect(
+                bytes: bytes,
+                response: response,
+                maximumBytes: 3,
+                onLimitExceeded: cancellation.record
+            )
+        }
+
+        #expect(cancellation.count == 1)
+    }
+
+    @Test
+    func responseCollectorCancelsChunkedBodyWhenBytesExceedTheLimit() async throws {
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.themoviedb.org/3/search/multi")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        let cancellation = CancellationRecorder()
+        let bytes = AsyncStream<UInt8>(bufferingPolicy: .unbounded) { continuation in
+            for byte: UInt8 in [1, 2, 3, 4] {
+                continuation.yield(byte)
+            }
+            continuation.finish()
+        }
+
+        await #expect(throws: TMDBResponseBodyCollectionError.responseTooLarge) {
+            _ = try await TMDBResponseBodyCollector.collect(
+                bytes: bytes,
+                response: response,
+                maximumBytes: 3,
+                onLimitExceeded: cancellation.record
+            )
+        }
+
+        #expect(cancellation.count == 1)
+    }
+
+    @Test
+    func responseCollectorReturnsACompleteBoundedBody() async throws {
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.themoviedb.org/3/search/multi")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Content-Length": "3"]
+        )!
+        let bytes = AsyncStream<UInt8>(bufferingPolicy: .unbounded) { continuation in
+            for byte: UInt8 in [1, 2, 3] {
+                continuation.yield(byte)
+            }
+            continuation.finish()
+        }
+
+        let body = try await TMDBResponseBodyCollector.collect(
+            bytes: bytes,
+            response: response,
+            maximumBytes: 3,
+            onLimitExceeded: {}
+        )
+
+        #expect(body == Data([1, 2, 3]))
+    }
+
+    @Test
     func tvDetailsUseSeriesEndpointAndExposeStatusAndNextEpisode() async throws {
         let recorder = RequestRecorder()
         let response = """
@@ -323,6 +445,29 @@ struct TMDBClientDecodingTests {
     }
 
     @Test
+    func detailsRejectsPayloadWhoseTopLevelIDDiffersFromRequestedID() async throws {
+        let response = """
+        {
+          "id": 999,
+          "name": "Wrong Show"
+        }
+        """.data(using: .utf8)!
+        let client = TMDBClient(
+            apiKey: { "1234567890abcdef1234567890abcdef" },
+            transport: { request in
+                (
+                    response,
+                    HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                )
+            }
+        )
+
+        await #expect(throws: MetadataProviderError.invalidResponse) {
+            _ = try await client.details(kind: .show, tmdbID: 68421)
+        }
+    }
+
+    @Test
     func movieDetailsUseMovieEndpoint() async throws {
         let recorder = RequestRecorder()
         let response = """
@@ -366,6 +511,23 @@ private actor RequestRecorder {
 
     func recordedRequest() -> URLRequest? {
         request
+    }
+}
+
+private final class CancellationRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancellationCount = 0
+
+    func record() {
+        lock.lock()
+        cancellationCount += 1
+        lock.unlock()
+    }
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancellationCount
     }
 }
 

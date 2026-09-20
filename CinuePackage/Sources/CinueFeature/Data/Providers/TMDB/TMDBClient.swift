@@ -4,6 +4,8 @@ struct TMDBClient: MetadataProvider {
     let providerID: MetadataProviderID = .tmdb
 
     private static let metadataSession: URLSession = .shared
+    private static let maximumMetadataResponseBytes = TMDBResponseBodyCollector.maximumBytes
+    private static let maximumSearchResults = 100
     private var apiKey: @Sendable () throws -> String?
     private var transport: @Sendable (URLRequest) async throws -> (Data, URLResponse)
     private var languageCode: @Sendable () -> String
@@ -12,7 +14,7 @@ struct TMDBClient: MetadataProvider {
         apiKey: @escaping @Sendable () throws -> String?,
         languageCode: @escaping @Sendable () -> String = { CinuePreferences.tmdbLanguageCode },
         transport: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            try await TMDBClient.metadataSession.data(for: request)
+            try await TMDBClient.streamingTransport(request)
         }
     ) {
         self.apiKey = apiKey
@@ -41,9 +43,15 @@ struct TMDBClient: MetadataProvider {
             switch kind {
             case .show:
                 let decoded = try JSONDecoder().decode(TMDBTVDetailsResponse.self, from: data)
+                guard decoded.id == tmdbID else {
+                    throw MetadataProviderError.invalidResponse
+                }
                 return Self.mapTVDetails(decoded, rawJSON: data)
             case .movie:
                 let decoded = try JSONDecoder().decode(TMDBMovieDetailsResponse.self, from: data)
+                guard decoded.id == tmdbID else {
+                    throw MetadataProviderError.invalidResponse
+                }
                 return Self.mapMovieDetails(decoded, rawJSON: data)
             }
         } catch {
@@ -58,7 +66,9 @@ struct TMDBClient: MetadataProvider {
         let (data, _) = try await performDataRequest(makeRequest)
         do {
             let decoded = try JSONDecoder().decode(TMDBSearchResponse.self, from: data)
-            return decoded.results.compactMap { Self.map($0, fallbackKind: fallbackKind) }
+            return decoded.results
+                .prefix(Self.maximumSearchResults)
+                .compactMap { Self.map($0, fallbackKind: fallbackKind) }
         } catch {
             throw MetadataProviderError.invalidResponse
         }
@@ -100,7 +110,27 @@ struct TMDBClient: MetadataProvider {
             throw MetadataProviderError.providerUnavailable
         }
 
+        guard data.count <= Self.maximumMetadataResponseBytes else {
+            throw MetadataProviderError.invalidResponse
+        }
+
         return (data, response)
+    }
+
+    private static func streamingTransport(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        let (bytes, response) = try await metadataSession.bytes(for: request)
+
+        do {
+            let data = try await TMDBResponseBodyCollector.collect(
+                bytes: bytes,
+                response: response,
+                maximumBytes: maximumMetadataResponseBytes,
+                onLimitExceeded: { bytes.task.cancel() }
+            )
+            return (data, response)
+        } catch TMDBResponseBodyCollectionError.responseTooLarge {
+            throw MetadataProviderError.invalidResponse
+        }
     }
 
     static func map(_ result: TMDBSearchResult, fallbackKind: MediaKind? = nil) -> MediaSummary? {
@@ -371,5 +401,37 @@ private enum TMDBCredential: Equatable {
         } else {
             self = .apiKey(value)
         }
+    }
+}
+
+enum TMDBResponseBodyCollectionError: Error, Equatable {
+    case responseTooLarge
+}
+
+struct TMDBResponseBodyCollector {
+    static let maximumBytes = 1 * 1024 * 1024
+
+    static func collect<Bytes: AsyncSequence>(
+        bytes: Bytes,
+        response: URLResponse,
+        maximumBytes: Int = maximumBytes,
+        onLimitExceeded: @escaping @Sendable () -> Void
+    ) async throws -> Data where Bytes.Element == UInt8 {
+        if response.expectedContentLength > Int64(maximumBytes) {
+            onLimitExceeded()
+            throw TMDBResponseBodyCollectionError.responseTooLarge
+        }
+
+        var body = Data()
+        body.reserveCapacity(maximumBytes)
+        for try await byte in bytes {
+            if body.count == maximumBytes {
+                onLimitExceeded()
+                throw TMDBResponseBodyCollectionError.responseTooLarge
+            }
+            body.append(byte)
+        }
+
+        return body
     }
 }
