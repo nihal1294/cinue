@@ -68,7 +68,7 @@ struct ProviderSettingsView: View {
                 Text("Keys stay in this device's Keychain. Provider metadata remains separate from your watch history.")
                     .foregroundStyle(.secondary)
 
-                Text("This personal build uses TMDB as the active metadata provider. TMDB accepts a v3 API key or a v4 read access token. TMDB cache must expire within 6 months, and attribution appears in Discover, detail screens, and About.")
+                Text("Cinue uses TMDB as its active metadata provider. TMDB accepts a v3 API key or a v4 read access token. TMDB cache must expire within 6 months, and attribution appears in Discover, detail screens, and About.")
                     .foregroundStyle(.secondary)
             }
 
