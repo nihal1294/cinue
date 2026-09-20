@@ -596,6 +596,201 @@ struct BackupServiceTests {
     }
 
     @Test
+    func providerMatchedImportPreservesCanonicalLocalIDForExistingAndImportedRelationships() throws {
+        let controller = PersistenceController(inMemory: true)
+        let service = BackupService(persistence: controller, now: fixedDate)
+        let canonicalShowID = "canonical-show"
+        let canonicalListID = "canonical-list"
+        let initialBackup = CinueBackupDocument(
+            exportedAt: fixedDate(),
+            trackedItems: [
+                canonicalTrackedItem(
+                    localID: canonicalShowID,
+                    kindRaw: "show",
+                    title: "Original Show",
+                    tmdbID: 42
+                )
+            ],
+            episodeStates: [
+                canonicalEpisodeState(
+                    localID: "canonical-episode",
+                    showLocalID: canonicalShowID
+                )
+            ],
+            lists: [
+                canonicalUserList(localID: canonicalListID, name: "Existing List")
+            ],
+            listItems: [
+                canonicalUserListItem(
+                    localID: "canonical-list-item",
+                    listLocalID: canonicalListID,
+                    itemLocalID: canonicalShowID
+                )
+            ]
+        )
+        _ = try service.importCinueBackup(data: backupEncoder.encode(initialBackup))
+
+        let conflictingLocalID = "incoming-show"
+        let importedBackup = CinueBackupDocument(
+            exportedAt: fixedDate(),
+            trackedItems: [
+                canonicalTrackedItem(
+                    localID: conflictingLocalID,
+                    kindRaw: "show",
+                    title: "Imported Show",
+                    tmdbID: 42
+                )
+            ],
+            episodeStates: [
+                canonicalEpisodeState(
+                    localID: "imported-episode",
+                    showLocalID: conflictingLocalID
+                )
+            ],
+            lists: [
+                canonicalUserList(localID: "imported-list", name: "Imported List")
+            ],
+            listItems: [
+                canonicalUserListItem(
+                    localID: "imported-list-item",
+                    listLocalID: "imported-list",
+                    itemLocalID: conflictingLocalID
+                )
+            ]
+        )
+
+        _ = try service.importCinueBackup(data: backupEncoder.encode(importedBackup))
+
+        #expect(try trackedItemCount(in: controller) == 1)
+        let show = try fetchTrackedItem(in: controller, localID: canonicalShowID)
+        #expect(show.value(forKey: "title") as? String == "Imported Show")
+
+        let existingEpisode = try fetchObject(
+            in: controller,
+            entityName: "EpisodeState",
+            localID: "canonical-episode"
+        )
+        let importedEpisode = try fetchObject(
+            in: controller,
+            entityName: "EpisodeState",
+            localID: "imported-episode"
+        )
+        #expect(existingEpisode.value(forKey: "showLocalID") as? String == canonicalShowID)
+        #expect(importedEpisode.value(forKey: "showLocalID") as? String == canonicalShowID)
+
+        let existingListItem = try fetchObject(
+            in: controller,
+            entityName: "UserListItem",
+            localID: "canonical-list-item"
+        )
+        let importedListItem = try fetchObject(
+            in: controller,
+            entityName: "UserListItem",
+            localID: "imported-list-item"
+        )
+        #expect(existingListItem.value(forKey: "itemLocalID") as? String == canonicalShowID)
+        #expect(importedListItem.value(forKey: "itemLocalID") as? String == canonicalShowID)
+    }
+
+    @Test
+    func seriesGuideShowImportUsesExistingCanonicalLocalIDForEpisodesAndMetadata() throws {
+        let controller = PersistenceController(inMemory: true)
+        let service = BackupService(persistence: controller, now: fixedDate)
+        let canonicalShowID = "canonical-show"
+        let initialBackup = CinueBackupDocument(
+            exportedAt: fixedDate(),
+            trackedItems: [
+                canonicalTrackedItem(
+                    localID: canonicalShowID,
+                    kindRaw: "show",
+                    title: "Existing Show",
+                    tmdbID: 68421
+                )
+            ]
+        )
+        _ = try service.importCinueBackup(data: backupEncoder.encode(initialBackup))
+
+        let seriesGuideJSON = """
+        [
+          {
+            "tmdb_id": 68421,
+            "tvdb_id": 332331,
+            "title": "Imported Show",
+            "seasons": [
+              {
+                "season": 1,
+                "episodes": [
+                  { "episode": 1, "title": "Pilot", "watched": false, "plays": 0 }
+                ]
+              }
+            ]
+          }
+        ]
+        """
+
+        _ = try service.importSeriesGuideShows(data: Data(seriesGuideJSON.utf8))
+
+        #expect(try trackedItemCount(in: controller) == 1)
+        let episode = try fetchObject(
+            in: controller,
+            entityName: "EpisodeState",
+            localID: "seriesguide:episode:\(canonicalShowID):s1:e1"
+        )
+        #expect(episode.value(forKey: "showLocalID") as? String == canonicalShowID)
+
+        let showMetadata = try fetchMetadataRecord(
+            in: controller,
+            cacheID: "seriesguide:show:\(canonicalShowID)"
+        )
+        #expect(showMetadata.value(forKey: "title") as? String == "Imported Show")
+
+        let episodeMetadata = try fetchMetadataRecord(
+            in: controller,
+            cacheID: "seriesguide:episode:seriesguide:episode:\(canonicalShowID):s1:e1"
+        )
+        #expect(episodeMetadata.value(forKey: "title") as? String == "Pilot")
+    }
+
+    @Test
+    func seriesGuideMovieImportUsesExistingCanonicalLocalIDForMetadata() throws {
+        let controller = PersistenceController(inMemory: true)
+        let service = BackupService(persistence: controller, now: fixedDate)
+        let canonicalMovieID = "canonical-movie"
+        let initialBackup = CinueBackupDocument(
+            exportedAt: fixedDate(),
+            trackedItems: [
+                canonicalTrackedItem(
+                    localID: canonicalMovieID,
+                    kindRaw: "movie",
+                    title: "Existing Movie",
+                    tmdbID: 19913
+                )
+            ]
+        )
+        _ = try service.importCinueBackup(data: backupEncoder.encode(initialBackup))
+
+        let seriesGuideJSON = """
+        [
+          {
+            "tmdb_id": 19913,
+            "title": "Imported Movie",
+            "watched": false,
+            "plays": 0
+          }
+        ]
+        """
+
+        _ = try service.importSeriesGuideMovies(data: Data(seriesGuideJSON.utf8))
+
+        #expect(try trackedItemCount(in: controller) == 1)
+        let metadata = try fetchMetadataRecord(
+            in: controller,
+            cacheID: "seriesguide:movie:\(canonicalMovieID)"
+        )
+        #expect(metadata.value(forKey: "title") as? String == "Imported Movie")
+    }
+
+    @Test
     func cinueBackupRoundTripsEpisodeRatingAndNotes() throws {
         let sourceController = PersistenceController(inMemory: true)
         let sourceService = BackupService(persistence: sourceController, now: fixedDate)
@@ -1099,6 +1294,86 @@ private func makeCinueTrackedItem(
         isHidden: false,
         userRating: userRating,
         notes: nil,
+        createdAt: fixedDate(),
+        updatedAt: fixedDate()
+    )
+}
+
+private func canonicalTrackedItem(
+    localID: String,
+    kindRaw: String,
+    title: String,
+    tmdbID: Int
+) -> CinueBackupTrackedItem {
+    CinueBackupTrackedItem(
+        localID: localID,
+        kindRaw: kindRaw,
+        title: title,
+        sortTitle: title.localizedLowercase,
+        tvdbID: nil,
+        tmdbID: tmdbID,
+        imdbID: nil,
+        statusRaw: "unwatched",
+        watchCount: 0,
+        watchedAt: nil,
+        isCollected: false,
+        isFavorite: false,
+        isHidden: false,
+        userRating: nil,
+        notes: nil,
+        createdAt: fixedDate(),
+        updatedAt: fixedDate()
+    )
+}
+
+private func canonicalEpisodeState(
+    localID: String,
+    showLocalID: String
+) -> CinueBackupEpisodeState {
+    CinueBackupEpisodeState(
+        localID: localID,
+        showLocalID: showLocalID,
+        seasonNumber: 1,
+        episodeNumber: 1,
+        title: "Episode",
+        tvdbID: nil,
+        tmdbID: nil,
+        statusRaw: "unwatched",
+        watchCount: 0,
+        watchedAt: nil,
+        isCollected: false,
+        isSkipped: false,
+        userRating: nil,
+        notes: nil,
+        createdAt: fixedDate(),
+        updatedAt: fixedDate()
+    )
+}
+
+private func canonicalUserList(localID: String, name: String) -> CinueBackupList {
+    CinueBackupList(
+        localID: localID,
+        name: name,
+        sortOrder: 0,
+        createdAt: fixedDate(),
+        updatedAt: fixedDate()
+    )
+}
+
+private func canonicalUserListItem(
+    localID: String,
+    listLocalID: String,
+    itemLocalID: String
+) -> CinueBackupListItem {
+    CinueBackupListItem(
+        localID: localID,
+        listLocalID: listLocalID,
+        itemLocalID: itemLocalID,
+        externalID: nil,
+        kindRaw: "show",
+        tvdbID: nil,
+        tmdbID: 42,
+        sortOrder: 0,
         createdAt: fixedDate(),
         updatedAt: fixedDate()
     )

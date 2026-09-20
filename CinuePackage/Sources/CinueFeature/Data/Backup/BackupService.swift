@@ -160,8 +160,16 @@ final class BackupService: @unchecked Sendable {
     ) throws -> BackupImportSummary {
         let cache = try ImportLookupCache(context: context)
         var summary = BackupImportSummary(importedItems: 0, updatedItems: 0, skippedItems: 0, source: "Cinue backup")
+        var canonicalTrackedLocalIDs: [String: String] = [:]
 
         for item in document.trackedItems {
+            let canonicalLocalID = cache.trackedItem(
+                localID: item.localID,
+                kindRaw: item.kindRaw,
+                tvdbID: item.tvdbID,
+                tmdbID: item.tmdbID,
+                imdbID: item.imdbID
+            )?.stringValue(forKey: "localID") ?? item.localID
             let result = try upsertTrackedItem(
                 context: context,
                 cache: cache,
@@ -183,6 +191,7 @@ final class BackupService: @unchecked Sendable {
                 createdAt: item.createdAt
             )
             apply(result, to: &summary)
+            canonicalTrackedLocalIDs[item.localID] = canonicalLocalID
         }
 
         for episode in document.episodeStates {
@@ -190,7 +199,7 @@ final class BackupService: @unchecked Sendable {
                 context: context,
                 cache: cache,
                 localID: episode.localID,
-                showLocalID: episode.showLocalID,
+                showLocalID: canonicalTrackedLocalIDs[episode.showLocalID] ?? episode.showLocalID,
                 seasonNumber: episode.seasonNumber,
                 episodeNumber: episode.episodeNumber,
                 title: episode.title,
@@ -226,7 +235,9 @@ final class BackupService: @unchecked Sendable {
                 cache: cache,
                 localID: listItem.localID,
                 listLocalID: listItem.listLocalID,
-                itemLocalID: listItem.itemLocalID,
+                itemLocalID: listItem.itemLocalID.map {
+                    canonicalTrackedLocalIDs[$0] ?? $0
+                },
                 externalID: listItem.externalID,
                 kindRaw: listItem.kindRaw,
                 tvdbID: listItem.tvdbID,
@@ -258,14 +269,21 @@ final class BackupService: @unchecked Sendable {
                 continue
             }
 
-            let showLocalID = show.localID
+            let importedShowLocalID = show.localID
+            let showLocalID = cache.trackedItem(
+                localID: importedShowLocalID,
+                kindRaw: MediaKind.show.rawValue,
+                tvdbID: show.tvdbID,
+                tmdbID: show.tmdbID,
+                imdbID: show.imdbID
+            )?.stringValue(forKey: "localID") ?? importedShowLocalID
             let watchedEpisodes = show.watchedEpisodeCount
             let totalPlays = try totalEpisodePlays(for: show)
             let status: WatchStatus = watchedEpisodes > 0 ? .watching : .unwatched
             let result = try upsertTrackedItem(
                 context: context,
                 cache: cache,
-                localID: showLocalID,
+                localID: importedShowLocalID,
                 kindRaw: MediaKind.show.rawValue,
                 title: show.title ?? "Imported Show",
                 sortTitle: show.title?.localizedLowercase,
@@ -366,10 +384,18 @@ final class BackupService: @unchecked Sendable {
             }
 
             let isWatched = movie.watched ?? false
+            let importedMovieLocalID = movie.localID
+            let movieLocalID = cache.trackedItem(
+                localID: importedMovieLocalID,
+                kindRaw: MediaKind.movie.rawValue,
+                tvdbID: nil,
+                tmdbID: movie.tmdbID,
+                imdbID: movie.imdbID
+            )?.stringValue(forKey: "localID") ?? importedMovieLocalID
             let result = try upsertTrackedItem(
                 context: context,
                 cache: cache,
-                localID: movie.localID,
+                localID: importedMovieLocalID,
                 kindRaw: MediaKind.movie.rawValue,
                 title: movie.title ?? "Imported Movie",
                 sortTitle: movie.title?.localizedLowercase,
@@ -390,7 +416,7 @@ final class BackupService: @unchecked Sendable {
             try upsertMetadataRecord(
                 context: context,
                 cache: cache,
-                cacheID: "seriesguide:movie:\(movie.localID)",
+                cacheID: "seriesguide:movie:\(movieLocalID)",
                 providerRaw: "seriesguide",
                 providerContentID: movie.providerContentID,
                 kindRaw: MediaKind.movie.rawValue,
@@ -740,7 +766,7 @@ final class BackupService: @unchecked Sendable {
             object.setValue(createdAt, forKey: "createdAt")
         }
 
-        object.setValue(localID, forKey: "localID")
+        object.setValue(existing?.stringValue(forKey: "localID") ?? localID, forKey: "localID")
         object.setValue(kindRaw, forKey: "kindRaw")
         object.setValue(title, forKey: "title")
         object.setValue(sortTitle ?? title.localizedLowercase, forKey: "sortTitle")
