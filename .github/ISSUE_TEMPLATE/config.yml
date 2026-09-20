@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/nihal1294/cinue/security/policy
+    about: Report security concerns privately through the security policy instead of opening a public issue.

@@ -1,0 +1,11 @@
+[
+  {
+    "list_id": "synthetic-weekend-queue",
+    "name": "Weekend Queue",
+    "order": 0,
+    "items": [
+      {"externalId": "990000001", "list_item_id": "synthetic-show-item", "tvdb_id": 0, "type": "tmdb-show"},
+      {"externalId": "990100002", "list_item_id": "synthetic-movie-item", "tvdb_id": 0, "type": "tmdb-movie"}
+    ]
+  }
+]
