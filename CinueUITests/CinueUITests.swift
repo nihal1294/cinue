@@ -170,6 +170,7 @@ final class CinueUITests: XCTestCase {
         newListAlert.textFields["List name"].typeText("Road Trip")
         newListAlert.buttons["Create"].tap()
         XCTAssertTrue(app.staticTexts["Road Trip"].waitForExistence(timeout: stateTransitionTimeout))
+        XCTAssertTrue(app.staticTexts["List created."].waitForNonExistence(timeout: stateTransitionTimeout))
 
         tapButton(exactLabel: "Manage list", in: app)
         tapButton(exactLabel: "Rename", in: app)
@@ -181,6 +182,7 @@ final class CinueUITests: XCTestCase {
         renameAlert.buttons["Rename"].tap()
         XCTAssertTrue(app.staticTexts["Road Trip Picks"].waitForExistence(timeout: stateTransitionTimeout))
         XCTAssertFalse(app.staticTexts["Road Trip"].exists)
+        XCTAssertTrue(app.staticTexts["List renamed."].waitForNonExistence(timeout: stateTransitionTimeout))
 
         tapButton(exactLabel: "Manage list", in: app)
         tapButton(exactLabel: "Delete", in: app)
