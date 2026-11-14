@@ -1,4 +1,7 @@
-# Cinue User Guide
+---
+title: Cinue User Guide
+slug: user-guide
+---
 
 Cinue keeps your show and movie library on your iPhone or iPad. It works without an account and stores watch state locally.
 

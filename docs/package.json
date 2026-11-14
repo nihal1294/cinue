@@ -1,0 +1,10 @@
+{
+  "name": "cinue-docs",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "astro build", "dev": "astro dev" },
+  "dependencies": {
+    "@astrojs/starlight": "0.43.1",
+    "astro": "7.4.12"
+  }
+}
