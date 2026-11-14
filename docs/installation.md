@@ -58,4 +58,3 @@ Without a credential, you can still import a supported backup and use local trac
 - **Bundle identifier cannot be registered or provisioning fails:** use a unique identifier, keep automatic signing enabled, and confirm that your Apple Account is signed in. Xcode needs network access to create or refresh device provisioning.
 - **The app no longer opens on a Personal Team device:** rebuild and run from Xcode to renew provisioning. Do not delete the app as the first troubleshooting step; export a backup before any deletion.
 - **Discover is unavailable or the library is empty:** add your own TMDB credential for discovery, or import a supported backup. An empty library on first launch is expected.
-
