@@ -1,0 +1,30 @@
+.screenshots, .walkthroughs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+.screenshots figure, .walkthroughs figure { margin: 0; text-align: center; }
+.screenshots img, .walkthroughs video {
+  display: block;
+  width: 100%;
+  border-radius: .7rem;
+  background: #111;
+  box-shadow: 0 .3rem 1rem #0002;
+}
+.screenshots .tablet { grid-column: 1 / -1; max-width: 48rem; margin: 0 auto; }
+.screenshots figcaption, .walkthroughs figcaption { margin: .45rem 0 1rem; font-size: .8rem; }
+@media (max-width: 600px) {
+  .screenshots, .walkthroughs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }
+  .walkthroughs figure:last-child { grid-column: 1 / -1; width: calc(50% - .35rem); margin: 0 auto; }
+}
+.actions { display: flex; flex-wrap: wrap; gap: .65rem; margin: 1.5rem 0; }
+.actions a {
+  display: inline-block;
+  border: 1px solid var(--sl-color-accent);
+  border-radius: .45rem;
+  padding: .55rem .9rem;
+  text-decoration: none;
+  font-weight: 600;
+}
+.actions a:first-child { color: var(--sl-color-black); background: var(--sl-color-accent); }
