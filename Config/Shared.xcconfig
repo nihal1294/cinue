@@ -4,7 +4,7 @@
 PRODUCT_NAME = Cinue
 PRODUCT_DISPLAY_NAME = Cinue
 PRODUCT_BUNDLE_IDENTIFIER = com.nihal.Cinue
-MARKETING_VERSION = 1.0
+MARKETING_VERSION = 0.1.0
 CURRENT_PROJECT_VERSION = 1
 
 // ==========================================

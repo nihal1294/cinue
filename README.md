@@ -26,7 +26,9 @@ It provides a private on-device library, episode progress, lists, statistics, lo
 
 ## Getting Started
 
-Cinue is distributed as source code. To try it, clone the repository and open the workspace in Xcode:
+**Try without building:** Find available **Cinue-iOS-Simulator-arm64.zip** downloads in [Releases](https://github.com/nihal1294/cinue/releases), then follow [Install and run](https://nihal1294.github.io/cinue/installation/). Simulator downloads require an Apple Silicon Mac with Xcode and a compatible iOS Simulator runtime. Choose **Try a sample library** in the app to explore fictional shows and movies without a TMDB key.
+
+**Build from source:** Clone the repository and open the workspace in Xcode:
 
 ```sh
 git clone https://github.com/nihal1294/cinue.git
@@ -64,10 +66,6 @@ xcodebuild test -workspace Cinue.xcworkspace -scheme Cinue -testPlan Cinue \
 ```
 
 GitHub Actions runs repository checks, an iOS build, unit tests, UI tests, and static analysis for pull requests and updates to `main`.
-
-## Project Status
-
-Cinue has no tagged releases yet. The project supports local Core Data storage, manual JSON backup and restore, and optional TMDB integration. iCloud auto-sync is not currently active.
 
 ## Attribution
 
