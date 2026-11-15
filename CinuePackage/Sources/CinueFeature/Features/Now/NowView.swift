@@ -107,7 +107,8 @@ struct NowView: View {
             title: "Now",
             symbol: "play.circle",
             headline: "Nothing to Watch Yet",
-            message: "Import or add shows to build your up-next queue."
+            message: "Import or add shows to build your up-next queue.",
+            offersSampleLibrary: true
         )
     }
 

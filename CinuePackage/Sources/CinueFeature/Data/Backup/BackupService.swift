@@ -530,18 +530,20 @@ final class BackupService: @unchecked Sendable {
         context: NSManagedObjectContext,
         kind: BackupKind?
     ) throws -> BackupImportSummary {
-        do {
-            let result = try decodeValidateAndMutate(
-                data: data,
-                context: context,
-                kind: kind
-            )
-            try contextSave(context)
-            applyBackupPreferences(result.preferences)
-            return result.summary
-        } catch {
-            context.rollback()
-            throw error
+        try persistence.mutationCoordinator.withLock {
+            do {
+                let result = try decodeValidateAndMutate(
+                    data: data,
+                    context: context,
+                    kind: kind
+                )
+                try contextSave(context)
+                applyBackupPreferences(result.preferences)
+                return result.summary
+            } catch {
+                context.rollback()
+                throw error
+            }
         }
     }
 

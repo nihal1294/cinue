@@ -7,6 +7,7 @@ struct CinuePlaceholderScreen: View {
     let symbol: String
     let headline: String
     let message: String
+    var offersSampleLibrary = false
 
     var body: some View {
         ZStack {
@@ -36,6 +37,10 @@ struct CinuePlaceholderScreen: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: 320)
+
+                    if offersSampleLibrary {
+                        SampleLibraryAction()
+                    }
                 }
 
                 Spacer()
