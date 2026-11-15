@@ -840,6 +840,144 @@ struct BackupServiceTests {
     }
 
     @Test
+    func nativeLocalMetadataExportExcludesRemoteAndImportPreservesExistingMetadata() throws {
+        let defaults = try makeTestDefaults()
+        defer { reset(defaults: defaults) }
+        let source = PersistenceController(inMemory: true)
+        let sourceContext = source.container.viewContext
+        try SampleLibraryStore(persistence: source, now: fixedDate).addSamples()
+        let service = BackupService(persistence: source, now: fixedDate, userDefaults: defaults)
+        let originalData = try service.exportCinueBackup()
+        let document = try backupDecoder.decode(CinueBackupDocument.self, from: originalData)
+        let show = try #require(document.trackedItems.first { $0.title == "Lantern Harbor" })
+        #expect(show.localRuntimeMinutes == 42)
+        let cacheID = "metadata:show:\(show.localID)"
+        let sourceMetadata = try fetchMetadataRecord(in: source, cacheID: cacheID)
+        sourceMetadata.setValue("tmdb", forKey: "providerRaw")
+        try sourceContext.save()
+        let remoteDocument = try backupDecoder.decode(CinueBackupDocument.self, from: service.exportCinueBackup())
+        #expect(remoteDocument.trackedItems.first { $0.localID == show.localID }?.localRuntimeMinutes == nil)
+
+        let target = PersistenceController(inMemory: true)
+        let context = target.container.viewContext
+        let existing = NSEntityDescription.insertNewObject(forEntityName: "MetadataRecord", into: context)
+        existing.setValue(cacheID, forKey: "cacheID")
+        existing.setValue("tmdb", forKey: "providerRaw")
+        existing.setValue("existing-provider-id", forKey: "providerContentID")
+        existing.setValue("show", forKey: "kindRaw")
+        existing.setValue("Existing metadata", forKey: "title")
+        existing.setValue(fixedDate(), forKey: "fetchedAt")
+        existing.setValue(Data("existing".utf8), forKey: "rawJSON")
+        try context.save()
+        _ = try BackupService(persistence: target, now: fixedDate, userDefaults: defaults).importCinueBackup(data: originalData)
+        let preserved = try fetchMetadataRecord(in: target, cacheID: cacheID)
+        #expect(preserved.value(forKey: "providerRaw") as? String == "tmdb")
+        #expect(preserved.value(forKey: "title") as? String == "Existing metadata")
+        #expect(preserved.value(forKey: "rawJSON") as? Data == Data("existing".utf8))
+    }
+
+    @Test(arguments: [false, true], [false, true])
+    func duplicateProviderIdentitiesDoNotCreateLocalMetadata(providerFirst: Bool, showConflict: Bool) throws {
+        let defaults = try makeTestDefaults()
+        defer { reset(defaults: defaults) }
+        let source = PersistenceController(inMemory: true)
+        try SampleLibraryStore(persistence: source, now: fixedDate).addSamples()
+        let sourceService = BackupService(persistence: source, now: fixedDate, userDefaults: defaults)
+        var document = try backupDecoder.decode(CinueBackupDocument.self, from: sourceService.exportCinueBackup())
+        let showIndex = try #require(document.trackedItems.firstIndex { $0.title == "Lantern Harbor" })
+        let localShow = document.trackedItems.remove(at: showIndex)
+        var providerShow = localShow
+        providerShow.tmdbID = 12345
+        let episodeIndex = try #require(document.episodeStates.firstIndex { $0.title == "Low Tide" })
+        let localEpisode = document.episodeStates.remove(at: episodeIndex)
+        var providerEpisode = localEpisode
+        providerEpisode.tmdbID = 67890
+        document.trackedItems += showConflict
+            ? (providerFirst ? [providerShow, localShow] : [localShow, providerShow]) : [localShow]
+        document.episodeStates += showConflict
+            ? [localEpisode] : (providerFirst ? [providerEpisode, localEpisode] : [localEpisode, providerEpisode])
+        let target = PersistenceController(inMemory: true)
+        _ = try BackupService(persistence: target, now: fixedDate, userDefaults: defaults)
+            .importCinueBackup(data: backupEncoder.encode(document))
+        let request = NSFetchRequest<NSManagedObject>(entityName: "MetadataRecord")
+        let cacheIDs = Set(try target.container.viewContext.fetch(request).compactMap { $0.value(forKey: "cacheID") as? String })
+        #expect(cacheIDs.contains("metadata:show:\(localShow.localID)") == !showConflict)
+        #expect(!cacheIDs.contains("metadata:episode:\(localEpisode.localID)"))
+    }
+
+    @Test
+    func nativeBackupWithoutLocalMetadataFieldsImportsWithoutCreatingMetadata() throws {
+        let defaults = try makeTestDefaults()
+        defer { reset(defaults: defaults) }
+        let source = PersistenceController(inMemory: true)
+        try SampleLibraryStore(persistence: source, now: fixedDate).addSamples()
+        let service = BackupService(persistence: source, now: fixedDate, userDefaults: defaults)
+        var document = try backupDecoder.decode(CinueBackupDocument.self, from: service.exportCinueBackup())
+        for index in document.trackedItems.indices { document.trackedItems[index].localRuntimeMinutes = nil }
+        for index in document.episodeStates.indices { document.episodeStates[index].localAirDate = nil }
+        let data = try backupEncoder.encode(document)
+        let serialized = try #require(String(data: data, encoding: .utf8))
+        #expect(!serialized.contains("localRuntimeMinutes"))
+        #expect(!serialized.contains("localAirDate"))
+        let target = PersistenceController(inMemory: true)
+        _ = try BackupService(persistence: target, now: fixedDate, userDefaults: defaults).importCinueBackup(data: data)
+        #expect(try trackedItemCount(in: target) == 4)
+        let request = NSFetchRequest<NSManagedObject>(entityName: "MetadataRecord")
+        #expect(try target.container.viewContext.fetch(request).isEmpty)
+    }
+
+    @Test
+    func failedNativeImportRollsBackRestoredLocalMetadata() throws {
+        let defaults = try makeTestDefaults()
+        defer { reset(defaults: defaults) }
+        let source = PersistenceController(inMemory: true)
+        try SampleLibraryStore(persistence: source, now: fixedDate).addSamples()
+        let data = try BackupService(persistence: source, now: fixedDate, userDefaults: defaults).exportCinueBackup()
+        let target = PersistenceController(inMemory: true)
+        let service = BackupService(persistence: target, now: fixedDate, userDefaults: defaults,
+                                    contextSave: { _ in throw ExpectedSaveFailure.failed })
+        #expect(throws: ExpectedSaveFailure.self) { try service.importCinueBackup(data: data) }
+        try expectImportableEntityCountsAreZero(in: target)
+        let request = NSFetchRequest<NSManagedObject>(entityName: "MetadataRecord")
+        #expect(try target.container.viewContext.fetch(request).isEmpty)
+    }
+
+    @Test
+    func nativeBackupAcceptsMaximumSafeLocalRuntime() throws {
+        let defaults = try makeTestDefaults()
+        defer { reset(defaults: defaults) }
+        let source = PersistenceController(inMemory: true)
+        try SampleLibraryStore(persistence: source, now: fixedDate).addSamples()
+        let service = BackupService(persistence: source, now: fixedDate, userDefaults: defaults)
+        var document = try backupDecoder.decode(CinueBackupDocument.self, from: service.exportCinueBackup())
+        document.trackedItems[0].localRuntimeMinutes = BackupImportPolicy.maximumLocalRuntimeMinutes
+        let target = PersistenceController(inMemory: true)
+        _ = try BackupService(persistence: target, now: fixedDate, userDefaults: defaults)
+            .importCinueBackup(data: backupEncoder.encode(document))
+        #expect(try trackedItemCount(in: target) == 4)
+    }
+
+    @Test(arguments: [0, -1, BackupImportPolicy.maximumLocalRuntimeMinutes + 1, Int.max])
+    func nativeBackupRejectsInvalidLocalRuntimeBeforeMutation(runtime: Int) throws {
+        let defaults = try makeTestDefaults()
+        defer { reset(defaults: defaults) }
+        let source = PersistenceController(inMemory: true)
+        try SampleLibraryStore(persistence: source, now: fixedDate).addSamples()
+        let sourceService = BackupService(persistence: source, now: fixedDate, userDefaults: defaults)
+        var document = try backupDecoder.decode(CinueBackupDocument.self, from: sourceService.exportCinueBackup())
+        document.trackedItems[0].localRuntimeMinutes = runtime
+        let target = PersistenceController(inMemory: true)
+        let service = BackupService(persistence: target, now: fixedDate, userDefaults: defaults)
+        do {
+            _ = try service.importCinueBackup(data: backupEncoder.encode(document))
+            Issue.record("Expected invalid local runtime to be rejected")
+        } catch let error as BackupImportError {
+            #expect(error == .integerOutOfRange(field: .localRuntimeMinutes, value: runtime))
+        }
+        try expectImportableEntityCountsAreZero(in: target)
+    }
+
+    @Test
     func cinueBackupRoundTripsNonSecretPreferences() throws {
         let sourceDefaults = try makeTestDefaults()
         defer { reset(defaults: sourceDefaults) }

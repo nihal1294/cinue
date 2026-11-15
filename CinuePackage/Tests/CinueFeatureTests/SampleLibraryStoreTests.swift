@@ -109,6 +109,33 @@ struct SampleLibraryStoreTests {
         }
     }
 
+    @Test func sampleBackupRoundTripPreservesNowAndInsights() throws {
+        let suite = "Cinue.SampleBackup.Views.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let source = PersistenceController(inMemory: true)
+        let sourceContext = source.container.viewContext
+        try SampleLibraryStore(persistence: source, now: { date }).addSamples()
+        let originalNow = NowSnapshotBuilder(context: sourceContext, now: { date }).snapshot(
+            trackedShows: try fetch("TrackedItem", sourceContext),
+            episodeStates: try fetch("EpisodeState", sourceContext))
+        #expect(originalNow.upNext.count == 1)
+        #expect(originalNow.upcoming.count == 1)
+
+        let data = try BackupService(persistence: source, userDefaults: defaults).exportCinueBackup()
+        let target = PersistenceController(inMemory: true)
+        _ = try BackupService(persistence: target, userDefaults: defaults).importCinueBackup(data: data)
+        let targetContext = target.container.viewContext
+        let restoredNow = NowSnapshotBuilder(context: targetContext, now: { date }).snapshot(
+            trackedShows: try fetch("TrackedItem", targetContext),
+            episodeStates: try fetch("EpisodeState", targetContext))
+        #expect(restoredNow == originalNow)
+        let statistics = StatisticsSnapshotBuilder(context: targetContext).snapshot(asOf: date)
+        #expect(statistics.watchedEpisodeMinutes == 42)
+        #expect(statistics.watchedMovieMinutes == 96)
+        #expect(statistics.watchlistMovieMinutes == 96)
+    }
+
     @Test func reseedingPreservesOrphanMetadataAndUsesNewDates() throws {
         let controller = PersistenceController(inMemory: true)
         let context = controller.container.viewContext

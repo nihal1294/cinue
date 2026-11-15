@@ -28,10 +28,11 @@ final class BackupService: @unchecked Sendable {
     }
 
     func exportCinueBackup() throws -> Data {
+        let localMetadata = try fetchLocalMetadataForBackup()
         let document = CinueBackupDocument(
             exportedAt: now(),
-            trackedItems: try fetchTrackedItems().map(makeBackupItem),
-            episodeStates: try fetchEpisodeStates().map(makeBackupEpisodeState),
+            trackedItems: try fetchTrackedItems().map { makeBackupItem($0, localMetadata: localMetadata) },
+            episodeStates: try fetchEpisodeStates().map { makeBackupEpisodeState($0, localMetadata: localMetadata) },
             lists: try fetchUserLists().map(makeBackupList),
             listItems: try fetchUserListItems().map(makeBackupListItem),
             preferences: makeBackupPreferences()
@@ -161,15 +162,19 @@ final class BackupService: @unchecked Sendable {
         let cache = try ImportLookupCache(context: context)
         var summary = BackupImportSummary(importedItems: 0, updatedItems: 0, skippedItems: 0, source: "Cinue backup")
         var canonicalTrackedLocalIDs: [String: String] = [:]
+        var nonlocalTrackedIDs: Set<String> = []
+        var nonlocalEpisodeIDs: Set<String> = []
+        var runtimeCandidates: [String: CinueBackupTrackedItem] = [:]
+        var airDateCandidates: [String: CinueBackupEpisodeState] = [:]
 
         for item in document.trackedItems {
-            let canonicalLocalID = cache.trackedItem(
-                localID: item.localID,
-                kindRaw: item.kindRaw,
-                tvdbID: item.tvdbID,
-                tmdbID: item.tmdbID,
-                imdbID: item.imdbID
-            )?.stringValue(forKey: "localID") ?? item.localID
+            let previousItem = cache.trackedItem(localID: item.localID, kindRaw: item.kindRaw,
+                tvdbID: item.tvdbID, tmdbID: item.tmdbID, imdbID: item.imdbID)
+            let previousItemWasLocal = previousItem.map {
+                $0.intValue(forKey: "tvdbID") == nil && $0.intValue(forKey: "tmdbID") == nil
+                    && $0.value(forKey: "imdbID") == nil
+            } ?? true
+            let canonicalLocalID = previousItem?.stringValue(forKey: "localID") ?? item.localID
             let result = try upsertTrackedItem(
                 context: context,
                 cache: cache,
@@ -192,9 +197,17 @@ final class BackupService: @unchecked Sendable {
             )
             apply(result, to: &summary)
             canonicalTrackedLocalIDs[item.localID] = canonicalLocalID
+            if !previousItemWasLocal || item.tvdbID != nil || item.tmdbID != nil || item.imdbID != nil {
+                nonlocalTrackedIDs.insert(canonicalLocalID)
+            }
+            runtimeCandidates[canonicalLocalID] = item
         }
 
         for episode in document.episodeStates {
+            let previousEpisode = cache.object(entityName: "EpisodeState", localIDKey: "localID", localID: episode.localID)
+            let previousEpisodeWasLocal = previousEpisode.map {
+                $0.intValue(forKey: "tvdbID") == nil && $0.intValue(forKey: "tmdbID") == nil
+            } ?? true
             let result = try upsertEpisodeState(
                 context: context,
                 cache: cache,
@@ -215,6 +228,10 @@ final class BackupService: @unchecked Sendable {
                 createdAt: episode.createdAt
             )
             apply(result, to: &summary)
+            if !previousEpisodeWasLocal || episode.tvdbID != nil || episode.tmdbID != nil {
+                nonlocalEpisodeIDs.insert(episode.localID)
+            }
+            airDateCandidates[episode.localID] = episode
         }
 
         for list in document.lists {
@@ -246,6 +263,31 @@ final class BackupService: @unchecked Sendable {
                 createdAt: listItem.createdAt
             )
             apply(result, to: &summary)
+        }
+
+        // Resolve metadata only after all duplicate identities have reached their
+        // final state. Any provider-backed identity in the sequence disqualifies
+        // the corresponding local metadata.
+        for (localID, item) in runtimeCandidates {
+            guard !nonlocalTrackedIDs.contains(localID), let runtime = item.localRuntimeMinutes,
+                  let tracked = cache.object(entityName: "TrackedItem", localIDKey: "localID", localID: localID),
+                  tracked.intValue(forKey: "tvdbID") == nil, tracked.intValue(forKey: "tmdbID") == nil,
+                  tracked.value(forKey: "imdbID") == nil,
+                  item.kindRaw == "show" || item.kindRaw == "movie" else { continue }
+            let payload = item.kindRaw == "show" ? "{\"runtime\":\(runtime)}" : "{\"runtime_min\":\(runtime)}"
+            restoreLocalMetadata(context: context, cache: cache, kind: item.kindRaw,
+                localID: localID, title: item.title, airDate: nil, rawJSON: Data(payload.utf8))
+        }
+        for (localID, episode) in airDateCandidates {
+            let showID = canonicalTrackedLocalIDs[episode.showLocalID] ?? episode.showLocalID
+            guard !nonlocalEpisodeIDs.contains(localID), !nonlocalTrackedIDs.contains(showID),
+                  let airDate = episode.localAirDate,
+                  let show = cache.object(entityName: "TrackedItem", localIDKey: "localID", localID: showID),
+                  show.stringValue(forKey: "kindRaw") == "show",
+                  show.intValue(forKey: "tvdbID") == nil, show.intValue(forKey: "tmdbID") == nil,
+                  show.value(forKey: "imdbID") == nil else { continue }
+            restoreLocalMetadata(context: context, cache: cache, kind: "episode", localID: localID,
+                title: episode.title ?? "Episode", airDate: airDate, rawJSON: nil)
         }
 
         return summary
@@ -588,6 +630,39 @@ final class BackupService: @unchecked Sendable {
         }
     }
 
+    private static func localMetadataCacheID(kindRaw: String, localID: String) -> String {
+        "metadata:\(kindRaw):\(localID)"
+    }
+
+    private func fetchLocalMetadataForBackup() throws -> [String: NSManagedObject] {
+        let request = NSFetchRequest<NSManagedObject>(entityName: "MetadataRecord")
+        let records = try persistence.container.viewContext.fetch(request)
+        let grouped = Dictionary(grouping: records, by: { $0.stringValue(forKey: "cacheID") })
+        return grouped.reduce(into: [:]) { result, pair in
+            guard pair.value.count == 1, let object = pair.value.first,
+                  object.stringValue(forKey: "providerRaw") == "local" else { return }
+            result[pair.key] = object
+        }
+    }
+
+    private func restoreLocalMetadata(context: NSManagedObjectContext, cache: ImportLookupCache,
+        kind: String, localID: String, title: String, airDate: Date?, rawJSON: Data?) {
+        let cacheID = Self.localMetadataCacheID(kindRaw: kind, localID: localID)
+        let importedCacheID = "seriesguide:\(kind):\(localID)"
+        guard cache.object(entityName: "MetadataRecord", localIDKey: "cacheID", localID: cacheID) == nil,
+              cache.object(entityName: "MetadataRecord", localIDKey: "cacheID", localID: importedCacheID) == nil else { return }
+        let object = NSEntityDescription.insertNewObject(forEntityName: "MetadataRecord", into: context)
+        object.setValue(cacheID, forKey: "cacheID")
+        object.setValue("local", forKey: "providerRaw")
+        object.setValue(localID, forKey: "providerContentID")
+        object.setValue(kind, forKey: "kindRaw")
+        object.setValue(title, forKey: "title")
+        object.setValue(now(), forKey: "fetchedAt")
+        object.setValue(airDate, forKey: "releaseDate")
+        object.setValue(rawJSON, forKey: "rawJSON")
+        cache.storeObject(object, entityName: "MetadataRecord", localIDKey: "cacheID", localID: cacheID)
+    }
+
     private func fetchTrackedItems() throws -> [NSManagedObject] {
         let request = NSFetchRequest<NSManagedObject>(entityName: "TrackedItem")
         request.sortDescriptors = [
@@ -625,8 +700,20 @@ final class BackupService: @unchecked Sendable {
         return try persistence.container.viewContext.fetch(request)
     }
 
-    private func makeBackupItem(_ object: NSManagedObject) -> CinueBackupTrackedItem {
-        CinueBackupTrackedItem(
+    private func makeBackupItem(_ object: NSManagedObject, localMetadata: [String: NSManagedObject]) -> CinueBackupTrackedItem {
+        let localID = object.stringValue(forKey: "localID")
+        let kind = object.stringValue(forKey: "kindRaw")
+        let metadata = localMetadata[Self.localMetadataCacheID(kindRaw: kind, localID: localID)]
+        let payload = metadata?.value(forKey: "rawJSON") as? Data
+        let runtime: Int?
+        if kind == "show", let payload {
+            runtime = (try? JSONDecoder().decode(SeriesGuideShowBackup.self, from: payload))?.runtime
+        } else if kind == "movie", let payload {
+            runtime = (try? JSONDecoder().decode(SeriesGuideMovieBackup.self, from: payload))?.runtimeMinutes
+        } else {
+            runtime = nil
+        }
+        return CinueBackupTrackedItem(
             localID: object.stringValue(forKey: "localID"),
             kindRaw: object.stringValue(forKey: "kindRaw"),
             title: object.stringValue(forKey: "title"),
@@ -643,11 +730,12 @@ final class BackupService: @unchecked Sendable {
             userRating: object.intValue(forKey: "userRating"),
             notes: object.value(forKey: "notes") as? String,
             createdAt: object.dateValue(forKey: "createdAt", fallback: now()),
-            updatedAt: object.dateValue(forKey: "updatedAt", fallback: now())
+            updatedAt: object.dateValue(forKey: "updatedAt", fallback: now()),
+            localRuntimeMinutes: runtime.flatMap { (1...BackupImportPolicy.maximumLocalRuntimeMinutes).contains($0) ? $0 : nil }
         )
     }
 
-    private func makeBackupEpisodeState(_ object: NSManagedObject) -> CinueBackupEpisodeState {
+    private func makeBackupEpisodeState(_ object: NSManagedObject, localMetadata: [String: NSManagedObject]) -> CinueBackupEpisodeState {
         CinueBackupEpisodeState(
             localID: object.stringValue(forKey: "localID"),
             showLocalID: object.stringValue(forKey: "showLocalID"),
@@ -664,7 +752,8 @@ final class BackupService: @unchecked Sendable {
             userRating: object.intValue(forKey: "userRating"),
             notes: object.value(forKey: "notes") as? String,
             createdAt: object.dateValue(forKey: "createdAt", fallback: now()),
-            updatedAt: object.dateValue(forKey: "updatedAt", fallback: now())
+            updatedAt: object.dateValue(forKey: "updatedAt", fallback: now()),
+            localAirDate: localMetadata[Self.localMetadataCacheID(kindRaw: "episode", localID: object.stringValue(forKey: "localID"))]?.value(forKey: "releaseDate") as? Date
         )
     }
 

@@ -1,6 +1,9 @@
 import Foundation
 
 struct BackupImportPolicy: Equatable, Sendable {
+    // Bounds the product of runtime, the maximum stored play count, and the
+    // standard aggregate record limit to the supported integer range.
+    static let maximumLocalRuntimeMinutes = Int.max / Int(Int32.max) / standard.maximumAggregateRecords
     static let standard = BackupImportPolicy(
         maximumFileBytes: 16 * 1_024 * 1_024,
         maximumTopLevelRecords: 10_000,
@@ -19,6 +22,7 @@ struct BackupImportPolicy: Equatable, Sendable {
 }
 
 enum BackupIntegerField: String, Equatable, Sendable {
+    case localRuntimeMinutes
     case trackedItemWatchCount
     case trackedItemUserRating
     case episodeSeasonNumber
@@ -135,6 +139,9 @@ struct BackupImportValidator {
                 item.statusRaw,
                 item.notes
             ])
+            if let runtime = item.localRuntimeMinutes, !(1...BackupImportPolicy.maximumLocalRuntimeMinutes).contains(runtime) {
+                throw BackupImportError.integerOutOfRange(field: .localRuntimeMinutes, value: runtime)
+            }
             try validateInt32(max(0, item.watchCount), field: .trackedItemWatchCount)
             try validateOptionalInt16(item.userRating, field: .trackedItemUserRating)
         }

@@ -51,6 +51,7 @@ struct CinueBackupTrackedItem: Codable, Equatable, Identifiable, Sendable {
     var notes: String?
     var createdAt: Date
     var updatedAt: Date
+    var localRuntimeMinutes: Int? = nil
 }
 
 struct CinueBackupEpisodeState: Codable, Equatable, Identifiable, Sendable {
@@ -72,6 +73,7 @@ struct CinueBackupEpisodeState: Codable, Equatable, Identifiable, Sendable {
     var notes: String?
     var createdAt: Date
     var updatedAt: Date
+    var localAirDate: Date? = nil
 }
 
 struct CinueBackupList: Codable, Equatable, Identifiable, Sendable {
