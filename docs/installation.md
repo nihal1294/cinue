@@ -2,15 +2,51 @@
 title: Install and run
 ---
 
+## Choose how to try Cinue
+
+| Your goal | Start here |
+| --- | --- |
+| See the app on any device | [Watch the short walkthroughs](https://nihal1294.github.io/cinue/#see-cinue-in-action) |
+| Try the app on an Apple Silicon Mac | [Install a Simulator download](#try-a-simulator-download), when one is available in Releases |
+| Build the app yourself or use your own iPhone/iPad | [Build from source](#build-from-source) |
+
+Neither the Simulator route nor a personal-device build requires a paid Apple Developer Program membership. A Simulator download still needs a Mac with Xcode and an installed iOS Simulator runtime. A physical device requires your own Apple Account and signing setup.
+
 ## Requirements
 
 - A Mac with Xcode 26.6 or newer, opened once to install its required components
 - An installed iOS Simulator runtime, or an iPhone/iPad running iOS 17.0 or later
 - No external Swift packages
 
-## Getting Started
+## Try a Simulator download
 
-Cinue is currently distributed as source code. There is no prebuilt iPhone/iPad installer or TestFlight download. Use the Simulator to try it on a Mac, or build it for your own device with Xcode.
+Open [Cinue Releases](https://github.com/nihal1294/cinue/releases) and look for **Cinue-iOS-Simulator-arm64.zip**. Packages are provided only when attached to a release; if the release has no Simulator package, use the source instructions below.
+
+This package is for an **Apple Silicon Mac running iOS Simulator**. It is not an iPhone installer or a native Mac application. Check the accompanying package information for the app version, build SDK, and declared minimum runtime.
+
+1. Download the ZIP and its `.sha256` checksum file from the same release.
+2. In Terminal, from the download folder, verify the archive:
+
+   ```sh
+   shasum -a 256 -c Cinue-iOS-Simulator-arm64.zip.sha256
+   ```
+
+3. Unzip the archive to obtain **Cinue.app**.
+4. Open an iPhone or iPad simulator in Xcode's Simulator or Device Hub. Start only the simulator you want to use for Cinue.
+5. From the folder containing `Cinue.app`, install and launch it:
+
+   ```sh
+   xcrun simctl install booted Cinue.app
+   xcrun simctl launch booted com.nihal.Cinue
+   ```
+
+If more than one simulator is running, use the chosen device's identifier in place of `booted`; `xcrun simctl list devices booted` lists them. You can also launch Cinue from the simulator's Home Screen after installation.
+
+No project build or device-signing setup is required for this download. [Explore the sample library](#try-a-sample-library) to get started without a TMDB key.
+
+## Build from source
+
+Clone the source to build for Simulator, make changes, or install on your own device. There is no prebuilt iPhone/iPad installer or TestFlight download.
 
 ### Clone and open
 
@@ -30,7 +66,7 @@ Open the workspace rather than `CinuePackage` alone so the app and test targets 
 2. Select an available iPhone or iPad simulator as the run destination, not **Any iOS Device** or a physical device. If no simulator is available, install an iOS runtime in **Xcode > Settings > Components** and create/select a simulator in the device picker.
 3. Choose **Product > Run** or press **Command-R**. Xcode builds Cinue and opens it in Simulator.
 
-A paid Apple Developer membership and a device provisioning profile are not needed for Simulator. You can launch the app without a TMDB credential; the library starts empty until you import a backup, or configure TMDB and add titles through Discover.
+A paid Apple Developer membership and a device provisioning profile are not needed for Simulator. The library starts empty; you can try fictional sample items, import a backup, or configure TMDB and add titles through Discover.
 
 ### Run on your iPhone or iPad
 
@@ -45,13 +81,21 @@ With a free Personal Team, provisioning expires after seven days and you must re
 
 Export a Cinue backup before deleting the app, changing its bundle identifier, or moving to another device. See the [User Guide](https://github.com/nihal1294/cinue/blob/main/docs/USER_GUIDE.md#import-export-and-backup).
 
-### Optional: enable TMDB discovery
+## Try a sample library
+
+On a fresh installation, open **Now** or **Library** and choose **Try a sample library**. Cinue adds fictional shows, movies, episodes, and a list to the local library so you can explore watch progress, favorites, lists, and Insights without a TMDB credential.
+
+The action is available only when the library has no items, episode state, lists, or list entries. Cinue checks again before adding samples and declines if other data or an import is present. It does not change provider credentials or preferences.
+
+These are ordinary local library items, not a separate account or temporary session. You can edit or remove them with the normal controls, and they are included in your backups. Sample titles have no TMDB provider IDs or remote artwork; they do not enable live discovery. If you already have a library, your existing data is kept and sample items are not added.
+
+## Optional: enable TMDB discovery
 
 In Cinue, open **Settings** > **Provider Keys** and enter your own TMDB v3 API key or v4 read access token to enable discovery and metadata refresh. See [Privacy](https://github.com/nihal1294/cinue/blob/main/docs/USER_GUIDE.md#attribution-and-privacy) for credential storage and artwork requests.
 
-Without a credential, you can still import a supported backup and use local tracking, lists, and statistics. The screenshots show a populated library; a fresh installation does not include that library.
+Without a credential, you can still try the sample library or import a supported backup and use local tracking, lists, and statistics. The screenshots show a populated library; the fictional sample is a separate collection.
 
-### Build and installation troubleshooting
+## Build and installation troubleshooting
 
 - **No runnable destination or missing iOS runtime:** install the platform/runtime Xcode requests, then select a specific simulator or connected device. A phone running a newer OS may require a newer Xcode version.
 - **Signing requires a development team:** select your own Team for the Cinue app target. If you only want Simulator, check that the destination is actually a simulator.

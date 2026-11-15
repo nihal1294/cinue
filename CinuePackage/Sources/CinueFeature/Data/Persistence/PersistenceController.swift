@@ -19,6 +19,7 @@ enum PersistenceMode: Equatable, Sendable {
 final class PersistenceController: @unchecked Sendable {
     static let shared = PersistenceController(mode: .localOnly)
 
+    let mutationCoordinator = LibraryMutationCoordinator()
     let container: NSPersistentContainer
     let mode: PersistenceMode
 
@@ -92,5 +93,22 @@ final class PersistenceController: @unchecked Sendable {
         }
 
         fatalError("Failed to load Cinue Core Data model")
+    }
+}
+
+/// Coordinates transactions that can populate the library from different contexts.
+final class LibraryMutationCoordinator: @unchecked Sendable {
+    private let lock = NSLock()
+
+    func withLock<T>(_ operation: () throws -> T) rethrows -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return try operation()
+    }
+
+    func tryWithLock<T>(_ operation: () throws -> T) rethrows -> T? {
+        guard lock.try() else { return nil }
+        defer { lock.unlock() }
+        return try operation()
     }
 }

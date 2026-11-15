@@ -5,6 +5,12 @@ slug: user-guide
 
 Cinue keeps your show and movie library on your iPhone or iPad. It works without an account and stores watch state locally.
 
+## Trying Cinue without a provider key
+
+If your library is empty, choose **Try a sample library** on **Now** or **Library** to add fictional shows, movies, episode progress, and a sample list. This uses local data and does not require a TMDB key. Samples are ordinary library items that you can edit, remove, and include in backups.
+
+Cinue will not add samples to an existing library, including one with only saved lists or episode state. It checks for existing data again when you choose the action. Credentials and preferences are kept unchanged. Live discovery and metadata refresh remain optional and require your own provider credential; fictional sample titles have no provider entries or remote artwork.
+
 ## Now
 
 The **Now** tab organizes released episodes into **Up Next**, **Recently Watched**, and **Recently Aired**, while **Upcoming** contains episodes with future air dates. Tap a summary tile or section to switch the view. Use the watch action on an eligible episode to mark it watched; the episode then moves into your history and your progress updates.

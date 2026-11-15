@@ -142,7 +142,8 @@ struct LibraryView: View {
             title: "Library",
             symbol: "rectangle.stack",
             headline: "Your Library Is Empty",
-            message: CinueCopy.Library.emptyMessage
+            message: CinueCopy.Library.emptyMessage,
+            offersSampleLibrary: true
         )
     }
 

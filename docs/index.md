@@ -4,6 +4,8 @@ title: Your shows and movies, on your device
 
 Cinue is a local-first TV show and movie tracker for iPhone and iPad. Keep up with episodes, build lists, and explore your viewing history in a private on-device library.
 
+You can explore a fictional sample library without a TMDB key. On an Apple Silicon Mac with Xcode, use a Simulator package when available in [Releases](https://github.com/nihal1294/cinue/releases), or build from source. The [installation guide](/cinue/installation/) covers both routes and personal-device setup.
+
 <div class="actions"><a href="/cinue/installation/">Install and run</a><a href="/cinue/user-guide/">Read the user guide</a><a href="https://github.com/nihal1294/cinue">View source</a></div>
 
 ## Made for your collection

@@ -31,3 +31,9 @@ Describe the user-facing change, its tests, and any compatibility impact.
 ## Source releases
 
 Before preparing a source release, choose a verified commit on `main` and confirm its required checks pass. Align the release version with the app's marketing version when one is set. In GitHub's release form, select that commit and use **Generate release notes**; review the notes and the source archive's installation instructions and documented limitations. Create the tag and publish the release as separate deliberate steps after review. Releases provide source code and do not promise a universally installable IPA.
+
+### Simulator packages
+
+The manually triggered **Simulator package** workflow builds a Release app for Apple Silicon iOS Simulator and produces a ZIP, SHA-256 checksum, and package information. Download its Actions artifact, verify the checksum, and install the extracted app on a clean compatible simulator before attaching the package files to a GitHub Release. Confirm the source revision matches the intended release and record the runtime used for validation in the release notes. The declared minimum OS is not a tested compatibility matrix.
+
+The package must launch without a provider credential, offer the optional sample library on an empty installation, and retain normal library data after relaunch. Publishing a package does not provide a physical-device installer; keep the Simulator and free Personal Team instructions distinct. Release artifacts must come from a clean reviewed revision.
