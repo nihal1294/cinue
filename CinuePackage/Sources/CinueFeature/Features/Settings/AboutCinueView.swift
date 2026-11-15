@@ -1,6 +1,15 @@
+import Foundation
 import SwiftUI
 
 struct AboutCinueView: View {
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
+    }
+
     var body: some View {
         Form {
             Section {
@@ -17,10 +26,13 @@ struct AboutCinueView: View {
                     }
                 }
                 .padding(.vertical, CinueSpacing.xs)
+
+                LabeledContent("Version", value: appVersion)
+                LabeledContent("Build", value: buildNumber)
             }
 
             Section("Distribution") {
-                Text("Cinue is distributed as source for local installation. It is not currently available on the App Store.")
+                Text("Cinue can be built from source for iPhone and iPad. A downloadable iOS Simulator app is also available for Apple Silicon Macs with Xcode. Cinue is not currently available on the App Store.")
                     .foregroundStyle(.secondary)
             }
         }
