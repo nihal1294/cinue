@@ -4,7 +4,17 @@ Cinue is a local-first TV show and movie tracker for iPhone and iPad, built with
 
 It provides a private on-device library, episode progress, lists, statistics, local backup and restore, SeriesGuide-compatible JSON import, and optional TMDB-powered discovery and metadata refresh.
 
+[Documentation](https://nihal1294.github.io/cinue/) · [Install and run](https://nihal1294.github.io/cinue/installation/) · [User guide](https://nihal1294.github.io/cinue/user-guide/)
+
 > Cinue is an independent open-source project. It is not affiliated with or endorsed by SeriesGuide. SeriesGuide is referenced solely to describe backup-format compatibility.
+
+## Preview
+
+<a href="https://nihal1294.github.io/cinue/#a-closer-look">
+  <img src="docs/media/screenshots/iphone-library-dark.png" alt="Cinue Library on iPhone in dark appearance" width="240">
+</a>
+
+[View all screenshots](https://nihal1294.github.io/cinue/#a-closer-look) · [Watch the walkthroughs](https://nihal1294.github.io/cinue/#see-cinue-in-action)
 
 ## Highlights
 
@@ -13,22 +23,6 @@ It provides a private on-device library, episode progress, lists, statistics, lo
 - Discover titles and refresh metadata with an optional user-supplied TMDB credential.
 - Export and import Cinue JSON backups, or migrate supported SeriesGuide JSON backups.
 - Keep data local: Cinue has no account, analytics, telemetry, or backend.
-
-## Screenshots
-
-![iPhone Now, light appearance](docs/media/screenshots/iphone-now-light.png)
-
-| iPhone Library, dark appearance | iPhone detail, dark appearance |
-| --- | --- |
-| ![iPhone Library, dark appearance](docs/media/screenshots/iphone-library-dark.png) | ![iPhone detail, dark appearance](docs/media/screenshots/iphone-detail-dark.png) |
-
-![iPad Library, dark appearance](docs/media/screenshots/ipad-library-dark.png)
-
-## Demo
-
-| Now | Library | Discover and detail |
-| --- | --- | --- |
-| [![Now walkthrough](docs/media/screenshots/iphone-now-light.png)](docs/media/clips/cinue-now.mp4) | [![Library walkthrough](docs/media/screenshots/iphone-library-dark.png)](docs/media/clips/cinue-library.mp4) | [![Discover and detail walkthrough](docs/media/screenshots/iphone-detail-dark.png)](docs/media/clips/cinue-discover-detail.mp4) |
 
 ## Getting Started
 
@@ -40,7 +34,7 @@ cd cinue
 open Cinue.xcworkspace
 ```
 
-Select the **Cinue** scheme and an iPhone or iPad simulator, then choose **Product > Run**. See [Install and run](docs/installation.md) for requirements, device signing, optional TMDB setup, and troubleshooting.
+Select the **Cinue** scheme and an iPhone or iPad simulator, then choose **Product > Run**. See [Install and run](https://nihal1294.github.io/cinue/installation/) for requirements, device signing, optional TMDB setup, and troubleshooting.
 
 ## Importing from SeriesGuide
 
@@ -56,7 +50,7 @@ Automatic iCloud sync is not active. Use the manual JSON export and import flow 
 
 ## User Guide
 
-See the [User Guide](docs/USER_GUIDE.md) for everyday use.
+See the [User Guide](https://nihal1294.github.io/cinue/user-guide/) for everyday use.
 
 ## Testing
 
