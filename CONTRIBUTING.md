@@ -27,3 +27,7 @@ Do not submit credentials, real viewing exports, or third-party copyrighted medi
 ## Pull requests and commits
 
 Describe the user-facing change, its tests, and any compatibility impact.
+
+## Source releases
+
+Before preparing a source release, choose a verified commit on `main` and confirm its required checks pass. Align the release version with the app's marketing version when one is set. In GitHub's release form, select that commit and use **Generate release notes**; review the notes and the source archive's installation instructions and documented limitations. Create the tag and publish the release as separate deliberate steps after review. Releases provide source code and do not promise a universally installable IPA.
